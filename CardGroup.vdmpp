@@ -1,0 +1,16 @@
+class CardGroup
+types
+-- TODO Define types here
+values
+-- TODO Define values here
+instance variables
+	private cards : seq1 of Card;
+	private name : seq of char;
+-- TODO Define instance variables here
+operations
+-- TODO Define operations here
+functions
+-- TODO Define functiones here
+traces
+-- TODO Define Combinatorial Test Traces here
+end CardGroup

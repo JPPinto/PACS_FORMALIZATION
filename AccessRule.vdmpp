@@ -1,0 +1,23 @@
+class AccessRule
+types
+	public Permission = <ALLOW> | <DENIED>;
+	private Date :: year : nat
+		month: nat
+		day : nat;
+-- TODO Define types here
+values
+-- TODO Define values here
+instance variables
+	private sectors : seq1 of SectorGroup;
+	private cards : seq1 of CardGroup;
+	private priority : Permission :=  <ALLOW>;
+	private startDate : Date;
+	private endDate : Date;
+-- TODO Define instance variables here
+operations
+-- TODO Define operations here
+functions
+-- TODO Define functiones here
+traces
+-- TODO Define Combinatorial Test Traces here
+end AccessRule

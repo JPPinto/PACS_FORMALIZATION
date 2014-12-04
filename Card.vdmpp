@@ -1,0 +1,19 @@
+class Card
+types
+	private Date :: year : nat
+		month: nat
+		day : nat;
+-- TODO Define types here
+values
+-- TODO Define values here
+instance variables
+	private dateExpiration : Date; 
+	private identifier : nat1 := 1;
+-- TODO Define instance variables here
+operations
+-- TODO Define operations here
+functions
+-- TODO Define functiones here
+traces
+-- TODO Define Combinatorial Test Traces here
+end Card

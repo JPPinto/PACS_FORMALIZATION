@@ -1,0 +1,16 @@
+class SectorGroup
+types
+-- TODO Define types here
+values
+-- TODO Define values here
+instance variables
+	private sectors : seq1 of Sector;
+	private name : seq of char;
+-- TODO Define instance variables here
+operations
+-- TODO Define operations here
+functions
+-- TODO Define functiones here
+traces
+-- TODO Define Combinatorial Test Traces here
+end SectorGroup
