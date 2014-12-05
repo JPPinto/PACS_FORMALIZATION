@@ -6,7 +6,7 @@ values
 instance variables
 	private cards : seq1 of Card;
 	private name : seq of char;
--- TODO Define instance variables here
+	
 operations
 -- TODO Define operations here
 functions

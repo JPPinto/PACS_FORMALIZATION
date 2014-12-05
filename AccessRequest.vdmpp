@@ -5,12 +5,12 @@ public Result = <ALLOW> | <DENIED>;
 values
 -- TODO Define values here
 instance variables
-	private timeStamp : seq of char;
+	private timeStamp : DateUtil`Date;
 	private cardUsed : Card;
 	private sector : Sector;
 	private accessRules : seq1 of AccessRule;
 	private result : Result;
--- TODO Define instance variables here
+	
 operations
 -- TODO Define operations here
 functions
