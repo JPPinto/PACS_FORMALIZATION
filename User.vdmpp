@@ -1,14 +1,56 @@
 class User
 types
--- TODO Define types here
-values
--- TODO Define values here
+	public UserName = seq1 of char;
+	
 instance variables
--- TODO Define instance variables here
+	-- ID counter to ensure we give unique ids to users
+	public static currentID: nat := 0;
+	
+	private id: nat;
+	private name: UserName;
+	private accessCard: [Card];
+	
+	inv Facility`noTwoUsersWithSameCard();
+	inv Facility`noTwoUsersWithSameID();
+	
 operations
--- TODO Define operations here
-functions
--- TODO Define functiones here
-traces
--- TODO Define Combinatorial Test Traces here
+
+	-- Create a new user specifying a card
+	public User: UserName * Card ==> User
+	User(userName, userAccessCard) == (
+		id := currentID;
+		currentID := currentID + 1;
+		name := userName;
+		accessCard := userAccessCard;
+		
+		return self
+	)
+	post currentID = currentID~ + 1;
+	
+	-- Create a new user without specifying a card
+	public User: UserName ==> User
+	User(userName) == (
+		id := currentID;
+		currentID := currentID + 1;
+		name := userName;
+		
+		return self
+	)
+	post currentID = currentID~ + 1;
+	
+	public getID: () ==> nat
+	getID() == return id;
+	
+	public getName: () ==> UserName
+	getName() == return name;
+	
+	public getAccessCard: () ==> [Card]
+	getAccessCard() == return accessCard;
+	
+	public setAcessCard: Card ==> ()
+	setAcessCard(newAccessCard) == accessCard := newAccessCard;
+	
+	public removeAccessCard: () ==> ()
+	removeAccessCard() == accessCard := nil;
+
 end User

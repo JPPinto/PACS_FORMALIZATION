@@ -30,7 +30,7 @@ operations
 		and sectorID <> ""
 		and parentSector.id <> sectorID
 		and parentSector <> sector
-	post sectorID in set usedIDs
+	post sectorID in set Sector`usedIDs
 		and self <> sector;
 	
 	-- Constructs a parent-less sector
@@ -40,7 +40,7 @@ operations
 		usedIDs := usedIDs union {sectorID};
 		return self
 	)
-	pre sectorID not in set usedIDs
+	pre sectorID not in set Sector`usedIDs
 		and sectorID <> ""
 	post sectorID in set usedIDs
 		and self <> sector;

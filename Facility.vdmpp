@@ -4,9 +4,26 @@ types
 values
 -- TODO Define values here
 instance variables
--- TODO Define instance variables here
+	-- The set of all users currently registered in the facility
+	public static users: set of User := {};
+	
+	
 operations
--- TODO Define operations here
+	-- Checks if there are no two users with the same card
+	public static noTwoUsersWithSameCard: () ==> bool
+	noTwoUsersWithSameCard() == (
+		return forall user in set users &
+			(not exists user2 in set users &
+				(user <> user2 and user.getAccessCard() <> nil and user.getAccessCard() = user2.getAccessCard()))
+	);
+	
+	-- Checks if there are no two users with the same id
+	public static noTwoUsersWithSameID: () ==> bool
+	noTwoUsersWithSameID() == (
+		return forall user in set users &
+			(not exists user2 in set users & (user <> user2 and user.getID() = user2.getID()))
+	);
+	
 functions
 -- TODO Define functiones here
 traces
