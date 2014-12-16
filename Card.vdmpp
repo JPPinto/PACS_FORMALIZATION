@@ -1,14 +1,48 @@
 class Card
-types
--- TODO Define types here
-values
--- TODO Define values here
+
 instance variables
-	private dateExpiration : DateUtil`Date; 
-	private identifier : nat1 := 1;
+	private static currentID: nat := 0;
+	
+	private id : nat;
+	private dateOfExpiration : [DateUtil`Date] := nil;
+	
+	inv Facility`noTwoCardsWithSameID();
 	
 operations
--- TODO Define operations here
+
+	-- Create a new card specifying the date of expiration
+	public Card: DateUtil`Date ==> Card
+	Card(doe) == (
+		id := currentID;
+		currentID := currentID + 1;
+		dateOfExpiration := doe;
+		
+		Facility`addCard(self);
+		
+		return self;
+	)
+	pre self not in set Facility`facilityAccessCards
+	post self in set Facility`facilityAccessCards;
+	
+	-- Create a new card without specifying the date of expiration
+	public Card: () ==> Card
+	Card() == (
+		id := currentID;
+		currentID := currentID + 1;
+		
+		Facility`addCard(self);
+		
+		return self;
+	)
+	pre self not in set Facility`facilityAccessCards
+	post self in set Facility`facilityAccessCards;
+	
+	public getID: () ==> nat
+	getID() == return id;
+	
+	public setDateOfExpiration: DateUtil`Date ==> ()
+	setDateOfExpiration(newDOE) == dateOfExpiration := newDOE;
+
 functions
 -- TODO Define functiones here
 traces

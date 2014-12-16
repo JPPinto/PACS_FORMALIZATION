@@ -7,6 +7,9 @@ instance variables
 	-- The set of all users currently registered in the facility
 	public static users: set of User := {};
 	
+	-- The set of all cards currently registered in the facility
+	public static facilityAccessCards: set of Card := {};
+	
 	
 operations
 	-- Checks if there are no two users with the same card
@@ -23,6 +26,34 @@ operations
 		return forall user in set users &
 			(not exists user2 in set users & (user <> user2 and user.getID() = user2.getID()))
 	);
+	
+	-- Checks if there are no two cards with the same id
+	public static noTwoCardsWithSameID: () ==> bool
+	noTwoCardsWithSameID() == (
+		return forall accessCard in set facilityAccessCards &
+			(not exists otherAccessCard in set facilityAccessCards &
+				(accessCard <> otherAccessCard and accessCard.getID() = otherAccessCard.getID()))
+	);
+	
+	public static addUser: User ==> ()
+	addUser(user) == users := users union {user}
+	pre user not in set users
+	post user in set users;
+	
+	public static removeUser: User ==> ()
+	removeUser(user) == users := users \ {user}
+	pre user in set users
+	post user not in set users;
+	
+	public static addCard: Card ==> ()
+	addCard(accessCard) == facilityAccessCards := facilityAccessCards union {accessCard}
+	pre accessCard not in set facilityAccessCards
+	post accessCard in set facilityAccessCards;
+	
+	public static removeCard: Card ==> ()
+	removeCard(accessCard) == facilityAccessCards := facilityAccessCards \ {accessCard}
+	pre accessCard in set facilityAccessCards
+	post accessCard not in set facilityAccessCards;
 	
 functions
 -- TODO Define functiones here

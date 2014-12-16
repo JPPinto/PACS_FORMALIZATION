@@ -8,7 +8,7 @@ instance variables
 	
 	private id: nat;
 	private name: UserName;
-	private accessCard: [Card];
+	private accessCard: [Card] := nil;
 	
 	inv Facility`noTwoUsersWithSameCard();
 	inv Facility`noTwoUsersWithSameID();
@@ -23,9 +23,13 @@ operations
 		name := userName;
 		accessCard := userAccessCard;
 		
+		Facility`addUser(self);
+		
 		return self
 	)
-	post currentID = currentID~ + 1;
+	pre self not in set Facility`users
+	post currentID = currentID~ + 1
+		and self in set Facility`users;
 	
 	-- Create a new user without specifying a card
 	public User: UserName ==> User
@@ -34,9 +38,13 @@ operations
 		currentID := currentID + 1;
 		name := userName;
 		
+		Facility`addUser(self);
+		
 		return self
 	)
-	post currentID = currentID~ + 1;
+	pre self not in set Facility`users
+	post currentID = currentID~ + 1
+		and self in set Facility`users;
 	
 	public getID: () ==> nat
 	getID() == return id;
