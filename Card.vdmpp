@@ -42,6 +42,12 @@ operations
 	
 	public setDateOfExpiration: DateUtil`Date ==> ()
 	setDateOfExpiration(newDOE) == dateOfExpiration := newDOE;
+	
+	public getDateOfExpiration: () ==> DateUtil`Date
+	getDateOfExpiration() == return dateOfExpiration;
+	
+	public removeDateOfExpiration: () ==> ()
+	removeDateOfExpiration() == dateOfExpiration := nil;
 
 functions
 -- TODO Define functiones here
