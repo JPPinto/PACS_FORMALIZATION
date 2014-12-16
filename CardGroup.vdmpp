@@ -1,16 +1,43 @@
 class CardGroup
 types
--- TODO Define types here
+	public CardGroupName = seq1 of char;
+	
 values
 -- TODO Define values here
 instance variables
-	private cards : seq1 of Card;
-	private name : seq of char;
+	private accessCards : set of Card;
+	private groupName : CardGroupName;
+	
+	inv (card accessCards) > 0;
+	inv groupName <> "";
 	
 operations
--- TODO Define operations here
-functions
--- TODO Define functiones here
-traces
--- TODO Define Combinatorial Test Traces here
+
+	-- Create a new group of cards, given the group name and a set of different cards
+	public CardGroup: CardGroupName * set of Card ==> CardGroup
+	CardGroup(cardGroupName, groupAccessCards) == (
+		groupName := cardGroupName;
+		accessCards := groupAccessCards;
+		
+		return self;
+	)
+	pre groupName <> ""
+		and (card groupAccessCards) > 0;
+		
+	public getAccessCards: () ==> set of Card
+	getAccessCards() == return accessCards;
+	
+	public getGroupName: () ==> CardGroupName
+	getGroupName() == return groupName;
+	
+	-- Add a previously non existent card to the card group
+	public addCard: Card ==> ()
+	addCard(newAccessCard) == accessCards := accessCards union {newAccessCard}
+	pre newAccessCard not in set accessCards;
+	
+	-- Remove an existing card from the card group
+	public removeCard: Card ==> ()
+	removeCard(cardToRemove) == accessCards := accessCards \ {cardToRemove}
+	pre cardToRemove in set accessCards;
+
 end CardGroup
