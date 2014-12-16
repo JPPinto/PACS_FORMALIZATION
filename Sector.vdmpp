@@ -1,16 +1,74 @@
 class Sector
 types
--- TODO Define types here
-values
--- TODO Define values here
+	public SectorID = seq1 of char;
+	
 instance variables
-	private facility : Facility := new Facility();
-	private parent : Sector := new Sector();
--- TODO Define instance variables here
+	-- Used Sector IDs
+	public static usedIDs: set of SectorID := {};
+	
+	-- This sector's id
+	private id: SectorID;
+	-- The overall facility this sector belongs to
+	private facility : Facility;
+	-- The sector this one is inserted into, if appliable
+	private parent : [Sector];
+	
+	inv ancestryIsConsistent();
+	
+	
 operations
--- TODO Define operations here
-functions
--- TODO Define functiones here
-traces
--- TODO Define Combinatorial Test Traces here
+
+	-- Constructor that specifies a parent sector
+	public Sector(sectorID: SectorID, sectorFacility: Facility, parentSector: Sector) sector:Sector == (
+		id := sectorID;
+		facility := sectorFacility;
+		parent := parentSector;
+		usedIDs := usedIDs union {sectorID};
+		return self
+	)
+	pre sectorID not in set usedIDs
+		and sectorID <> ""
+		and parentSector.id <> sectorID
+		and parentSector <> sector
+	post sectorID in set usedIDs
+		and self <> sector;
+	
+	-- Constructs a parent-less sector
+	public Sector(sectorID: SectorID, sectorFacility: Facility) sector:Sector == (
+		id := sectorID;
+		facility := sectorFacility;
+		usedIDs := usedIDs union {sectorID};
+		return self
+	)
+	pre sectorID not in set usedIDs
+		and sectorID <> ""
+	post sectorID in set usedIDs
+		and self <> sector;
+	
+	public getID: () ==> SectorID
+	getID() == return id;
+	
+	public getParent: () ==> Sector
+	getParent() == return parent;
+	
+	public getFacility: () ==> Facility
+	getFacility() == return facility;
+	
+	-- Returns all ancestor sectors (parent of parent of parent...)
+	public getAncestors: () ==> set of Sector
+	getAncestors() == (
+		dcl parentSector:[Sector] := self.parent;
+		dcl ancestors: set of Sector := {self.parent};
+		while(parentSector <> nil) do (
+			ancestors := ancestors union {parentSector.parent};
+			parentSector := parentSector.parent
+		);
+		
+		return ancestors
+	);
+	
+	-- Checks if there is no ancestor of this sector that references to it
+	private ancestryIsConsistent: () ==> bool
+	ancestryIsConsistent() == return self not in set self.getAncestors();
+	
 end Sector
