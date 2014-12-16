@@ -1,16 +1,44 @@
 class SectorGroup
 types
--- TODO Define types here
-values
--- TODO Define values here
+	public SectorGroupName = seq1 of char;
+		
 instance variables
-	private sectors : seq1 of Sector;
-	private name : seq of char;
--- TODO Define instance variables here
+	private sectors : set of Sector;
+	private groupName : SectorGroupName;
+	
+	inv (card sectors) > 0;
+	inv groupName <> "";
+	
 operations
--- TODO Define operations here
-functions
--- TODO Define functiones here
-traces
--- TODO Define Combinatorial Test Traces here
+
+	-- Create a new group of sectors, given the group name and a set of different sectors
+	public SectorGroup: SectorGroupName * set of Sector ==> SectorGroup
+	SectorGroup(sectorGroupName, groupSectors) == (
+		groupName := sectorGroupName;
+		sectors := groupSectors;
+		
+		return self;
+	)
+	pre groupName <> ""
+		and (card groupSectors) > 0;
+		
+	public containsSector: Sector ==> bool
+	containsSector(groupSector) == return groupSector in set sectors;
+		
+	public getSectors: () ==> set of Sector
+	getSectors() == return sectors;
+	
+	public getGroupName: () ==> SectorGroupName
+	getGroupName() == return groupName;
+	
+	-- Add a previously non existent sector to the sector group
+	public addSector: Sector ==> ()
+	addSector(newSector) == sectors := sectors union {newSector}
+	pre newSector not in set sectors;
+	
+	-- Remove an existing sector from the sector group
+	public removeSector: Sector ==> ()
+	removeSector(sectorToRemove) == sectors := sectors \ {sectorToRemove}
+	pre sectorToRemove in set sectors;
+	
 end SectorGroup
