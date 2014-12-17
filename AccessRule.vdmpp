@@ -58,6 +58,9 @@ operations
 	)
 	pre rulePriority in set {LOW, MID, HIGH};
 	
+	public getPriority: () ==> nat1
+	getPriority() == return priority;
+	
 	public ruleRefersToAccessCard: Card ==> bool
 	ruleRefersToAccessCard(accessCard) == return cards.containsCard(accessCard);
 	
