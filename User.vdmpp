@@ -3,51 +3,31 @@ types
 	public UserName = seq1 of char;
 	
 instance variables
-	-- ID counter to ensure we give unique ids to users
-	public static currentID: nat := 0;
 	
-	private id: nat;
-	private name: UserName;
-	private accessCard: [Card] := nil;
-	
-	inv Facility`noTwoUsersWithSameCard();
-	inv Facility`noTwoUsersWithSameID();
+	public id: nat;
+	public name: UserName;
+	public accessCard: [Card] := nil;
 	
 operations
 
 	-- Create a new user specifying a card
-	public User: UserName * Card ==> User
-	User(userName, userAccessCard) == (
-		id := currentID;
-		currentID := currentID + 1;
+	public User: UserName * nat * Card ==> User
+	User(userName, userID, userAccessCard) == (
+		id := userID;
 		name := userName;
 		accessCard := userAccessCard;
 		
-		Facility`addUser(self);
-		
 		return self
-	)
-	pre not exists user in set Facility`users & user.accessCard = userAccessCard and
-	self not in set Facility`users
-	post currentID = currentID~ + 1
-		and not exists user in set Facility`users & user <> self and user.id = self.id
-		and self in set Facility`users;
+	);
 	
 	-- Create a new user without specifying a card
-	public User: UserName ==> User
-	User(userName) == (
-		id := currentID;
-		currentID := currentID + 1;
+	public User: UserName * nat ==> User
+	User(userName, userID) == (
+		id := userID;
 		name := userName;
 		
-		Facility`addUser(self);
-		
 		return self
-	)
-	pre self not in set Facility`users
-	post currentID = currentID~ + 1
-		and not exists user in set Facility`users & user <> self and user.id = self.id
-		and self in set Facility`users;
+	);
 	
 	public getID: () ==> nat
 	getID() == return id;
@@ -60,8 +40,7 @@ operations
 	
 	-- Set a new access card. Pre condition prevents adding an access card another user is already using.
 	public setAcessCard: Card ==> ()
-	setAcessCard(newAccessCard) == accessCard := newAccessCard
-	pre not exists user in set Facility`users & user <> self and user.accessCard = newAccessCard;
+	setAcessCard(newAccessCard) == accessCard := newAccessCard;
 	
 	public removeAccessCard: () ==> ()
 	removeAccessCard() == accessCard := nil;

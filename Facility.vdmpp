@@ -1,22 +1,51 @@
 class Facility
 
+types
+	public FacilityName = seq1 of char;
+
 instance variables
 	-- The set of all users currently registered in the facility
-	public static users: set of User := {};
+	public users: set of User := {};
 	
 	-- The set of all cards currently registered in the facility
-	public static facilityAccessCards: set of Card := {};
+	public facilityAccessCards: set of Card := {};
 	
-	-- The set of all access rules currently defined for the facility
-	public static facilityAccessRules: set of AccessRule := {};
+		-- The set of all card groups currently defined for the facility
+	public cardGroups: set of CardGroup := {};
+	
+	-- The set of all sectors currently defined for the facility
+	public sectors: set of Sector := {};
+	
+	-- The set of all sector groups currently defined for the facility
+	public sectorGroups: set of SectorGroup := {};
+	
+	
+	
+		-- The set of all access rules currently defined for the facility
+	public facilityAccessRules: set of AccessRule := {};
 	
 	-- The complete access log, represented as a set of access requests
-	public static accessLog: set of AccessRequest := {};
+	public accessLog: set of AccessRequest := {};
+	
+	public name: FacilityName;
+	
+	inv noTwoUsersWithSameCard();
+	inv noTwoUsersWithSameID();
+	inv noTwoCardsWithSameID();
 	
 	
 operations
+
+	public Facility: FacilityName ==> Facility
+	Facility(facilityName) == (
+		name := facilityName;
+		
+		return self
+	);
+	
+	
 	-- Checks if there are no two users with the same card
-	public static noTwoUsersWithSameCard: () ==> bool
+	public noTwoUsersWithSameCard: () ==> bool
 	noTwoUsersWithSameCard() == (
 		return forall user in set users &
 			(not exists user2 in set users &
@@ -24,41 +53,95 @@ operations
 	);
 	
 	-- Checks if there are no two users with the same id
-	public static noTwoUsersWithSameID: () ==> bool
+	public noTwoUsersWithSameID: () ==> bool
 	noTwoUsersWithSameID() == (
 		return forall user in set users &
 			(not exists user2 in set users & (user <> user2 and user.getID() = user2.getID()))
 	);
 	
 	-- Checks if there are no two cards with the same id
-	public static noTwoCardsWithSameID: () ==> bool
+	public noTwoCardsWithSameID: () ==> bool
 	noTwoCardsWithSameID() == (
 		return forall accessCard in set facilityAccessCards &
 			(not exists otherAccessCard in set facilityAccessCards &
 				(accessCard <> otherAccessCard and accessCard.getID() = otherAccessCard.getID()))
 	);
 	
-	public static addUser: User ==> ()
-	addUser(user) == users := users union {user}
-	pre user not in set users
-	post user in set users;
+	public registerUser: User`UserName * nat * Card ==> User
+	registerUser(username, id, accessCard) == (
+		dcl newuser: User := new User(username, id, accessCard);
+		users := users union {newuser};
+		
+		return newuser;
+	)
+	pre (not exists user in set users & user.id = id)
+		and (not exists user in set users & user.accessCard = accessCard)
+	post RESULT in set users;
 	
-	public static removeUser: User ==> ()
+	public registerUser: User`UserName * nat ==> User
+	registerUser(username, id) == (
+		dcl newuser: User := new User(username, id);
+		users := users union {newuser};
+		
+		return newuser;
+	)
+	pre (not exists user in set users & user.id = id)
+	post RESULT in set users;
+	
+	public removeUser: nat ==> ()
+	removeUser(userID) == (
+		dcl user: User := iota u in set users & u.getID() = userID;
+		removeUser(user);
+	)
+	pre exists u in set users & u.id = userID
+	post not exists u in set users & u.id = userID;
+	
+	public removeUser: User ==> ()
 	removeUser(user) == users := users \ {user}
 	pre user in set users
 	post user not in set users;
 	
-	public static addCard: Card ==> ()
-	addCard(accessCard) == facilityAccessCards := facilityAccessCards union {accessCard}
-	pre accessCard not in set facilityAccessCards
-	post accessCard in set facilityAccessCards;
+	public registerCard: DateUtil`Date * nat ==> Card
+	registerCard(doe, id) == (
+		dcl accessCard: Card := new Card(doe, id);
+		facilityAccessCards := facilityAccessCards union {accessCard};
+		
+		return accessCard;
+	)
+	pre (not exists accessCard in set facilityAccessCards & accessCard.id = id)
+	post RESULT in set facilityAccessCards;
 	
-	public static removeCard: Card ==> ()
+	public registerCard: nat ==> Card
+	registerCard(id) == (
+		dcl accessCard: Card := new Card(id);
+		facilityAccessCards := facilityAccessCards union {accessCard};
+		
+		return accessCard;
+	)
+	pre (not exists accessCard in set facilityAccessCards & accessCard.id = id)
+	post RESULT in set facilityAccessCards;
+	
+	public removeCard: Card ==> ()
 	removeCard(accessCard) == facilityAccessCards := facilityAccessCards \ {accessCard}
 	pre accessCard in set facilityAccessCards
 	post accessCard not in set facilityAccessCards;
 	
-	public static getRelatedRules: Card * Sector ==> set of AccessRule
+	public removeCard: nat ==> ()
+	removeCard(cardID) == (
+		dcl accessCard: Card := iota c in set facilityAccessCards & c.getID() = cardID;
+		removeCard(accessCard);
+	)
+	pre exists c in set facilityAccessCards & c.id = cardID
+	post not exists c in set facilityAccessCards & c.id = cardID;
+	
+	public allocateCard: User * Card ==> ()
+	allocateCard(user, accessCard) == (
+		user.setAcessCard(accessCard);
+	)
+	pre not exists u in set users & u.accessCard = accessCard
+	post exists1 u in set users & u.accessCard = accessCard;
+	
+	public getRelatedRules: Card * Sector ==> set of AccessRule
 	getRelatedRules(accessCard, accessedSector) == (
 		dcl relatedRules: set of AccessRule := {};
 		for all rule in set facilityAccessRules do (
@@ -68,7 +151,7 @@ operations
 		return relatedRules;
 	);
 	
-	public static requestAccess: User * Sector * DateUtil`Date ==> AccessRule`Permission * AccessRequest
+	public requestAccess: User * Sector * DateUtil`Date ==> AccessRule`Permission * AccessRequest
 	requestAccess(requester, sector, requestDate) == (
 		dcl relatedRules: set of AccessRule := getRelatedRules(requester.getAccessCard(), sector);
 		dcl highestPriorityRule: AccessRule := AccessRule`getHighestPriorityValidRuleFromSet(relatedRules, requestDate);

@@ -1,43 +1,28 @@
 class Card
 
 instance variables
-	private static currentID: nat := 0;
-	
-	private id : nat;
-	private dateOfExpiration : [DateUtil`Date] := nil;
-	
-	inv Facility`noTwoCardsWithSameID();
+
+	public id : nat;
+	public dateOfExpiration : [DateUtil`Date] := nil;
 	
 operations
 
 	-- Create a new card specifying the date of expiration
-	public Card: DateUtil`Date ==> Card
-	Card(doe) == (
-		id := currentID;
-		currentID := currentID + 1;
+	public Card: DateUtil`Date * nat ==> Card
+	Card(doe, cardID) == (
+		id := cardID;
 		dateOfExpiration := doe;
 		
-		Facility`addCard(self);
-		
 		return self;
-	)
-	pre self not in set Facility`facilityAccessCards
-	post self in set Facility`facilityAccessCards and
-		not exists accessCard in set Facility`facilityAccessCards & accessCard <> self and accessCard.id = self.id;
+	);
 	
 	-- Create a new card without specifying the date of expiration
-	public Card: () ==> Card
-	Card() == (
-		id := currentID;
-		currentID := currentID + 1;
-		
-		Facility`addCard(self);
+	public Card: nat ==> Card
+	Card(cardID) == (
+		id := cardID;
 		
 		return self;
-	)
-	pre self not in set Facility`facilityAccessCards
-	post self in set Facility`facilityAccessCards and
-		not exists accessCard in set Facility`facilityAccessCards & accessCard <> self and accessCard.id = self.id;
+	);
 	
 	public getID: () ==> nat
 	getID() == return id;
