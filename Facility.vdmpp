@@ -1,8 +1,5 @@
 class Facility
-types
--- TODO Define types here
-values
--- TODO Define values here
+
 instance variables
 	-- The set of all users currently registered in the facility
 	public static users: set of User := {};
@@ -12,6 +9,9 @@ instance variables
 	
 	-- The set of all access rules currently defined for the facility
 	public static facilityAccessRules: set of AccessRule := {};
+	
+	-- The complete access log, represented as a set of access requests
+	public static accessLog: set of AccessRequest := {};
 	
 	
 operations
@@ -58,8 +58,26 @@ operations
 	pre accessCard in set facilityAccessCards
 	post accessCard not in set facilityAccessCards;
 	
-functions
--- TODO Define functiones here
+	public static getRelatedRules: Card * Sector ==> set of AccessRule
+	getRelatedRules(accessCard, accessedSector) == (
+		dcl relatedRules: set of AccessRule := {};
+		for all rule in set facilityAccessRules do (
+			if rule.ruleRefersToAccessCardAndSector(accessCard, accessedSector) then relatedRules := relatedRules union {rule};
+		);
+		
+		return relatedRules;
+	);
+	
+	public static requestAccess: User * Sector ==> AccessRule`Permission
+	requestAccess(requester, sector) == (
+		dcl relatedRules: set of AccessRule := getRelatedRules(requester.getAccessCard(), sector);
+		dcl highestPriorityRule: AccessRule := AccessRule`getHighestPriorityRuleFromSet(relatedRules);
+		
+		-- TODO: Add the logging
+		return highestPriorityRule.getPermission();
+	)
+	pre requester in set users 
+
 traces
 -- TODO Define Combinatorial Test Traces here
 end Facility

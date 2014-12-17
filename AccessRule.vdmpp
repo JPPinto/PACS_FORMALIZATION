@@ -61,6 +61,9 @@ operations
 	public getPriority: () ==> nat1
 	getPriority() == return priority;
 	
+	public getPermission: () ==> Permission
+	getPermission() == return permission;
+	
 	public ruleRefersToAccessCard: Card ==> bool
 	ruleRefersToAccessCard(accessCard) == return cards.containsCard(accessCard);
 	
@@ -85,6 +88,20 @@ operations
 		);
 		
 		return accessableSectors;
+	);
+	
+	public static getHighestPriorityRuleFromSet: set of AccessRule ==> AccessRule
+	getHighestPriorityRuleFromSet(setOfRules) == (
+		dcl highestPriorityRule: [AccessRule] := nil;
+		for all rule in set setOfRules do (
+			if(highestPriorityRule <> nil) then 
+				if rule.getPriority() > highestPriorityRule.getPriority() then highestPriorityRule := rule
+				else
+					if rule.getPriority() = highestPriorityRule.getPriority() then
+						if rule.getPermission() = <DENY> then highestPriorityRule := rule;
+		);
+		
+		return highestPriorityRule;
 	);
 	
 end AccessRule
