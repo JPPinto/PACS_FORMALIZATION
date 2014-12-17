@@ -30,6 +30,7 @@ instance variables
 	
 operations
 
+	-- Create an access rule with specified expiration date
 	public AccessRule: SectorGroup * CardGroup * Permission * nat1 * DateUtil`Date * DateUtil`Date ==> AccessRule
 	AccessRule(accessSectors, accessCards, accessPermission, rulePriority, ruleStartDate, ruleEndDate) == (
 		sectors := accessSectors;
@@ -45,6 +46,7 @@ operations
 	pre DateUtil`isAfter(ruleEndDate, ruleStartDate)
 		and rulePriority in set {LOW, MID, HIGH};
 	
+	-- Create an access rule without expiration date
 	public AccessRule: SectorGroup * CardGroup * Permission * nat1 * DateUtil`Date ==> AccessRule
 	AccessRule(accessSectors, accessCards, accessPermission, rulePriority, ruleStartDate) == (
 		sectors := accessSectors;
@@ -63,6 +65,16 @@ operations
 	
 	public getPermission: () ==> Permission
 	getPermission() == return permission;
+	
+	public getExpirationDate: () ==> DateUtil`Date
+	getExpirationDate() == return endDate;
+	
+	public setExpirationDate: DateUtil`Date ==> ()
+	setExpirationDate(doe) == endDate := doe
+	pre DateUtil`isAfter(doe, startDate);
+	
+	public isExpired: DateUtil`Date ==> bool
+	isExpired(currentDate) == return DateUtil`isAfter(currentDate, endDate);
 	
 	public ruleRefersToAccessCard: Card ==> bool
 	ruleRefersToAccessCard(accessCard) == return cards.containsCard(accessCard);
@@ -90,11 +102,29 @@ operations
 		return accessableSectors;
 	);
 	
+	-- Retrieves, from a set of Access Rules, the one with the highest priority.
+	-- Check class description for details on priorities.
 	public static getHighestPriorityRuleFromSet: set of AccessRule ==> AccessRule
 	getHighestPriorityRuleFromSet(setOfRules) == (
 		dcl highestPriorityRule: [AccessRule] := nil;
 		for all rule in set setOfRules do (
 			if(highestPriorityRule <> nil) then 
+				if rule.getPriority() > highestPriorityRule.getPriority() then highestPriorityRule := rule
+				else
+					if rule.getPriority() = highestPriorityRule.getPriority() then
+						if rule.getPermission() = <DENY> then highestPriorityRule := rule;
+		);
+		
+		return highestPriorityRule;
+	);
+	
+	-- Retrieves, from a set of Access Rules, the one with the highest priority, but still valid (not expired).
+	-- Check class description for details on priorities.
+	public static getHighestPriorityValidRuleFromSet: set of AccessRule * DateUtil`Date ==> AccessRule
+	getHighestPriorityValidRuleFromSet(setOfRules, currentDate) == (
+		dcl highestPriorityRule: [AccessRule] := nil;
+		for all rule in set setOfRules do (
+			if(highestPriorityRule <> nil and not highestPriorityRule.isExpired(currentDate)) then 
 				if rule.getPriority() > highestPriorityRule.getPriority() then highestPriorityRule := rule
 				else
 					if rule.getPriority() = highestPriorityRule.getPriority() then

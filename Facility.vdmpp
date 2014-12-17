@@ -71,7 +71,7 @@ operations
 	public static requestAccess: User * Sector * DateUtil`Date ==> AccessRule`Permission * AccessRequest
 	requestAccess(requester, sector, requestDate) == (
 		dcl relatedRules: set of AccessRule := getRelatedRules(requester.getAccessCard(), sector);
-		dcl highestPriorityRule: AccessRule := AccessRule`getHighestPriorityRuleFromSet(relatedRules);
+		dcl highestPriorityRule: AccessRule := AccessRule`getHighestPriorityValidRuleFromSet(relatedRules, requestDate);
 		dcl finalResult: AccessRule`Permission := highestPriorityRule.getPermission();
 		
 		dcl loggedRequest: AccessRequest :=
