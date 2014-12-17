@@ -1,20 +1,87 @@
 class AccessRule
+	/*
+		An access rule defines the access policy to a given set of sectors (contemplated as a sector group),
+		for a given set of access cards (contemplated as a card group).
+		Each rule has a defined priority level from 1 to 3, 3 being the highest. This allows us to create rule exceptions
+		in a more comprehensive way: if two rules restrict the same access, the one with the highest priority prevails.
+		In cases with the same priority, if one DENIES access to the other, the access is denied, as unwanted access is
+		assumed more critical than blocked access. 
+	 */
 types
-	public Permission = <ALLOW> | <DENIED>;
--- TODO Define types here
+	public Permission = <ALLOW> | <DENY>;
+	
 values
--- TODO Define values here
+	public static LOW: nat1 = 1;
+	public static MID: nat1 = 2;
+	public static HIGH: nat1 = 3;
+	
 instance variables
-	private sectors : seq1 of SectorGroup;
-	private cards : seq1 of CardGroup;
-	private priority : Permission :=  <ALLOW>;
-	private startDate : DateUtil`Date;
-	private endDate : DateUtil`Date;
+	private sectors: SectorGroup;
+	private cards: CardGroup;
+	private permission: Permission;
+	
+	private startDate: DateUtil`Date;
+	private endDate: [DateUtil`Date] := nil;
+	
+	private priority: nat1 := LOW;
+	
+	inv if endDate <> nil then DateUtil`isAfter(endDate, startDate) else true;
+	inv priority in set {LOW, MID, HIGH};
 	
 operations
--- TODO Define operations here
-functions
--- TODO Define functiones here
-traces
--- TODO Define Combinatorial Test Traces here
+
+	public AccessRule: SectorGroup * CardGroup * Permission * nat1 * DateUtil`Date * DateUtil`Date ==> AccessRule
+	AccessRule(accessSectors, accessCards, accessPermission, rulePriority, ruleStartDate, ruleEndDate) == (
+		sectors := accessSectors;
+		cards := accessCards;
+		permission := accessPermission;
+		startDate := ruleStartDate;
+		endDate := ruleEndDate;
+		
+		priority := rulePriority;
+		
+		return self
+	)
+	pre DateUtil`isAfter(ruleEndDate, ruleStartDate)
+		and rulePriority in set {LOW, MID, HIGH};
+	
+	public AccessRule: SectorGroup * CardGroup * Permission * nat1 * DateUtil`Date ==> AccessRule
+	AccessRule(accessSectors, accessCards, accessPermission, rulePriority, ruleStartDate) == (
+		sectors := accessSectors;
+		cards := accessCards;
+		permission := accessPermission;
+		startDate := ruleStartDate;
+		
+		priority := rulePriority;
+		
+		return self
+	)
+	pre rulePriority in set {LOW, MID, HIGH};
+	
+	public ruleRefersToAccessCard: Card ==> bool
+	ruleRefersToAccessCard(accessCard) == return cards.containsCard(accessCard);
+	
+	public ruleRefersToAccessCardAndSector: Card * Sector ==> bool
+	ruleRefersToAccessCardAndSector(accessCard, sector) ==
+		return cards.containsCard(accessCard) and sectors.containsSector(sector);
+	
+	-- This returns a full list of concerned sectors for this rule. Bearing in mind that someone with access to
+	-- a particular sector must also have access to the parent sectors, this operation returns:
+	-- Either a full list of accessable sectors and their parents, if this is an <ALLOW> rule;
+	-- Or a list of the main sectors refered in the sector group, if this is a <DENY> rule (since denying access
+	-- to a specific sector doesn't necessarily mean we can't access its parent, by this rule):
+	public fullListOfConcernedSectors: () ==> set of Sector
+	fullListOfConcernedSectors() == (
+		dcl mainSectors: set of Sector := sectors.getSectors();
+		dcl accessableSectors: set of Sector := mainSectors;
+		
+		if permission = <ALLOW> then (
+			for all sector in set mainSectors do (
+				accessableSectors := accessableSectors union sector.getAncestors();
+			);
+		);
+		
+		return accessableSectors;
+	);
+	
 end AccessRule

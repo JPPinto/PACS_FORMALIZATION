@@ -10,6 +10,9 @@ instance variables
 	-- The set of all cards currently registered in the facility
 	public static facilityAccessCards: set of Card := {};
 	
+	-- The set of all access rules currently defined for the facility
+	public static facilityAccessRules: set of AccessRule := {};
+	
 	
 operations
 	-- Checks if there are no two users with the same card
