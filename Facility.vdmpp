@@ -29,9 +29,19 @@ instance variables
 	
 	public name: FacilityName;
 	
-	inv noTwoUsersWithSameCard();
-	inv noTwoUsersWithSameID();
-	inv noTwoCardsWithSameID();
+	-- Checks if there are no two users with the same card
+	inv forall user in set users &
+			(not exists user2 in set users &
+				(user <> user2 and user.getAccessCard() <> nil and user.getAccessCard() = user2.getAccessCard()));
+				
+	-- Checks if there are no two users with the same id
+	inv forall user in set users &
+			(not exists user2 in set users & (user <> user2 and user.getID() = user2.getID()));
+	
+	-- Checks if there are no two cards with the same id
+	inv forall accessCard in set facilityAccessCards &
+			(not exists otherAccessCard in set facilityAccessCards &
+				(accessCard <> otherAccessCard and accessCard.getID() = otherAccessCard.getID()));
 	
 	
 operations
@@ -41,30 +51,6 @@ operations
 		name := facilityName;
 		
 		return self
-	);
-	
-	
-	-- Checks if there are no two users with the same card
-	public noTwoUsersWithSameCard: () ==> bool
-	noTwoUsersWithSameCard() == (
-		return forall user in set users &
-			(not exists user2 in set users &
-				(user <> user2 and user.getAccessCard() <> nil and user.getAccessCard() = user2.getAccessCard()))
-	);
-	
-	-- Checks if there are no two users with the same id
-	public noTwoUsersWithSameID: () ==> bool
-	noTwoUsersWithSameID() == (
-		return forall user in set users &
-			(not exists user2 in set users & (user <> user2 and user.getID() = user2.getID()))
-	);
-	
-	-- Checks if there are no two cards with the same id
-	public noTwoCardsWithSameID: () ==> bool
-	noTwoCardsWithSameID() == (
-		return forall accessCard in set facilityAccessCards &
-			(not exists otherAccessCard in set facilityAccessCards &
-				(accessCard <> otherAccessCard and accessCard.getID() = otherAccessCard.getID()))
 	);
 	
 	public registerUser: User`UserName * nat * Card ==> User
