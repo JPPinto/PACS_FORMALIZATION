@@ -27,8 +27,10 @@ operations
 		
 		return self
 	)
-	pre self not in set Facility`users
+	pre not exists user in set Facility`users & user.accessCard = userAccessCard and
+	self not in set Facility`users
 	post currentID = currentID~ + 1
+		and not exists user in set Facility`users & user.id = self.id
 		and self in set Facility`users;
 	
 	-- Create a new user without specifying a card
@@ -44,6 +46,7 @@ operations
 	)
 	pre self not in set Facility`users
 	post currentID = currentID~ + 1
+		and not exists user in set Facility`users & user.id = self.id
 		and self in set Facility`users;
 	
 	public getID: () ==> nat
@@ -55,8 +58,10 @@ operations
 	public getAccessCard: () ==> [Card]
 	getAccessCard() == return accessCard;
 	
+	-- Set a new access card. Pre condition prevents adding an access card another user is already using.
 	public setAcessCard: Card ==> ()
-	setAcessCard(newAccessCard) == accessCard := newAccessCard;
+	setAcessCard(newAccessCard) == accessCard := newAccessCard
+	pre not exists user in set Facility`users & user <> self and user.accessCard = newAccessCard;
 	
 	public removeAccessCard: () ==> ()
 	removeAccessCard() == accessCard := nil;
