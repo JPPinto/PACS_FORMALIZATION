@@ -42,8 +42,7 @@ operations
 	)
 	pre sectorID not in set Sector`usedIDs
 		and sectorID <> ""
-	post sectorID in set usedIDs
-		and self <> sector;
+	post sectorID in set usedIDs;
 	
 	public getID: () ==> SectorID
 	getID() == return id;
