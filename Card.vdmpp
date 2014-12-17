@@ -23,7 +23,7 @@ operations
 	)
 	pre self not in set Facility`facilityAccessCards
 	post self in set Facility`facilityAccessCards and
-		not exists accessCard in set Facility`facilityAccessCards & accessCard.id = self.id;
+		not exists accessCard in set Facility`facilityAccessCards & accessCard <> self and accessCard.id = self.id;
 	
 	-- Create a new card without specifying the date of expiration
 	public Card: () ==> Card
@@ -37,7 +37,7 @@ operations
 	)
 	pre self not in set Facility`facilityAccessCards
 	post self in set Facility`facilityAccessCards and
-		not exists accessCard in set Facility`facilityAccessCards & accessCard.id = self.id;
+		not exists accessCard in set Facility`facilityAccessCards & accessCard <> self and accessCard.id = self.id;
 	
 	public getID: () ==> nat
 	getID() == return id;

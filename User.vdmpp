@@ -30,7 +30,7 @@ operations
 	pre not exists user in set Facility`users & user.accessCard = userAccessCard and
 	self not in set Facility`users
 	post currentID = currentID~ + 1
-		and not exists user in set Facility`users & user.id = self.id
+		and not exists user in set Facility`users & user <> self and user.id = self.id
 		and self in set Facility`users;
 	
 	-- Create a new user without specifying a card
@@ -46,7 +46,7 @@ operations
 	)
 	pre self not in set Facility`users
 	post currentID = currentID~ + 1
-		and not exists user in set Facility`users & user.id = self.id
+		and not exists user in set Facility`users & user <> self and user.id = self.id
 		and self in set Facility`users;
 	
 	public getID: () ==> nat
