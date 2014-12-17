@@ -1,20 +1,46 @@
 class AccessRequest
-types
-public Result = <ALLOW> | <DENIED>;
--- TODO Define types here
-values
--- TODO Define values here
+
 instance variables
-	private timeStamp : DateUtil`Date;
-	private cardUsed : Card;
-	private sector : Sector;
-	private accessRules : seq1 of AccessRule;
-	private result : Result;
+	-- Time stamp of when access was requested
+	private timestamp: DateUtil`Date;
+	-- The user performing the request
+	private requestingUser: User;
+	-- Card used for the resquest
+	private cardUsed: Card;
+	-- Sector the user tried to access
+	private sector: Sector;
+	-- Access rule used by the system to allow/deny the access
+	private accessRule: AccessRule;
+	-- The result of this access request
+	private result: AccessRule`Permission;
 	
 operations
--- TODO Define operations here
-functions
--- TODO Define functiones here
-traces
--- TODO Define Combinatorial Test Traces here
+
+	public AccessRequest: User * Card * Sector * AccessRule * AccessRule`Permission * DateUtil`Date ==> AccessRequest
+	AccessRequest(requester, accessCard, accessedSector, relatedRule, finalResult, requestDate) == (
+		requestingUser := requester;
+		cardUsed := accessCard;
+		sector := accessedSector;
+		accessRule := relatedRule;
+		result := finalResult;
+		timestamp := requestDate;
+		
+		return self;
+	);
+	
+	public getRequester: () ==> User
+	getRequester() == return requestingUser;
+	
+	public getUsedCard: () ==> Card
+	getUsedCard() == return cardUsed;
+	
+	public getRelatedRule: () ==> AccessRule
+	getRelatedRule() == return accessRule;
+	
+	public getResult: () ==> AccessRule`Permission
+	getResult() == return result;
+	
+	public getAccessDate: () ==> DateUtil`Date
+	getAccessDate() == return timestamp;
+
 end AccessRequest
