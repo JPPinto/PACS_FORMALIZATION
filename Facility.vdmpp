@@ -68,13 +68,18 @@ operations
 		return relatedRules;
 	);
 	
-	public static requestAccess: User * Sector ==> AccessRule`Permission
-	requestAccess(requester, sector) == (
+	public static requestAccess: User * Sector * DateUtil`Date ==> AccessRule`Permission * AccessRequest
+	requestAccess(requester, sector, requestDate) == (
 		dcl relatedRules: set of AccessRule := getRelatedRules(requester.getAccessCard(), sector);
 		dcl highestPriorityRule: AccessRule := AccessRule`getHighestPriorityRuleFromSet(relatedRules);
+		dcl finalResult: AccessRule`Permission := highestPriorityRule.getPermission();
 		
-		-- TODO: Add the logging
-		return highestPriorityRule.getPermission();
+		dcl loggedRequest: AccessRequest :=
+			new AccessRequest(requester, requester.getAccessCard(), sector, highestPriorityRule, finalResult, requestDate);
+		
+		accessLog := accessLog union {loggedRequest};
+		
+		return mk_(finalResult, loggedRequest);
 	)
 	pre requester in set users 
 
