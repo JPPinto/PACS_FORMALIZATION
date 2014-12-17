@@ -70,12 +70,11 @@ class AccessPoliciesTest
 				4 |-> mk_DateUtil`Date(2014, 12, 14, 23, 55)
 			};
 			
-			dcl normalCardsToCreate: set of nat := {5, 6, 8, 8, 9};
+			dcl normalCardsToCreate: set of nat := {5, 6, 7, 8, 9};
 			
 			dcl createdExpirableCards: set of Card := configureCardsScenario(facility, expirableCardsToCreate);
 			
 			dcl createdNormalCards: set of Card := configureCardsScenario(facility, normalCardsToCreate);
-			
 			
 			assertEqual(card createdExpirableCards, card dom expirableCardsToCreate);
 			assertEqual(card createdNormalCards, card normalCardsToCreate);
@@ -91,12 +90,8 @@ class AccessPoliciesTest
 		-- This test breaks the no two cards with same id safety requirement
 		public testFailedCardConfiguration: Facility ==> ()
 		testFailedCardConfiguration(facility) == (
-			dcl expirableCardsToCreate: map nat to DateUtil`Date := {
-				0 |-> mk_DateUtil`Date(2014, 12, 18, 23, 55),
-				0 |-> mk_DateUtil`Date(2014, 12, 18, 23, 55),
-				0 |-> mk_DateUtil`Date(2014, 12, 18, 23, 55)
-			};
-		dcl createdExpirableCards: set of Card := configureCardsScenario(facility, expirableCardsToCreate);
+			dcl cards1: set of Card := configureCardsScenario(facility, {8});
+			dcl cards2: set of Card := configureCardsScenario(facility, {8});
 			return;
 		);
 		
