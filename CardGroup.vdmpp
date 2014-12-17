@@ -34,13 +34,16 @@ operations
 	getGroupName() == return groupName;
 	
 	-- Add a previously non existent card to the card group
+	-- Card mustn't exist in the group
 	public addCard: Card ==> ()
 	addCard(newAccessCard) == accessCards := accessCards union {newAccessCard}
 	pre newAccessCard not in set accessCards;
 	
 	-- Remove an existing card from the card group
+	-- Card has to exist in the group and we can't leave the group empty
 	public removeCard: Card ==> ()
 	removeCard(cardToRemove) == accessCards := accessCards \ {cardToRemove}
-	pre cardToRemove in set accessCards;
+	pre cardToRemove in set accessCards
+	and (card accessCards) > 1;
 
 end CardGroup
