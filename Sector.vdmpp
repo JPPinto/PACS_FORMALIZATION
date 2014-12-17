@@ -11,7 +11,7 @@ instance variables
 	-- The overall facility this sector belongs to
 	private facility : Facility;
 	-- The sector this one is inserted into, if appliable
-	private parent : [Sector];
+	private parent : [Sector] := nil;
 	
 	inv ancestryIsConsistent();
 	
@@ -29,9 +29,8 @@ operations
 	pre sectorID not in set usedIDs
 		and sectorID <> ""
 		and parentSector.id <> sectorID
-		and parentSector <> sector
 	post sectorID in set Sector`usedIDs
-		and self <> sector;
+		and self <> parentSector;
 	
 	-- Constructs a parent-less sector
 	public Sector(sectorID: SectorID, sectorFacility: Facility) sector:Sector == (
@@ -57,10 +56,14 @@ operations
 	public getAncestors: () ==> set of Sector
 	getAncestors() == (
 		dcl parentSector:[Sector] := self.parent;
-		dcl ancestors: set of Sector := {self.parent};
-		while(parentSector <> nil) do (
-			ancestors := ancestors union {parentSector.parent};
-			parentSector := parentSector.parent
+		dcl ancestors: set of Sector := {};
+		
+		if parentSector <> nil then (
+			ancestors := ancestors union {parentSector};
+			while(parentSector <> nil) do (
+				ancestors := ancestors union {parentSector.parent};
+				parentSector := parentSector.parent
+			);
 		);
 		
 		return ancestors
