@@ -53,6 +53,7 @@ operations
 		return self
 	);
 	
+	-- Registers a user in the system, provided an access card
 	public registerUser: User`UserName * nat * Card ==> User
 	registerUser(username, id, accessCard) == (
 		dcl newuser: User := new User(username, id, accessCard);
@@ -64,6 +65,7 @@ operations
 		and (not exists user in set users & user.accessCard = accessCard)
 	post RESULT in set users;
 	
+	-- Registers a user in the system, no access card provided
 	public registerUser: User`UserName * nat ==> User
 	registerUser(username, id) == (
 		dcl newuser: User := new User(username, id);
@@ -74,6 +76,7 @@ operations
 	pre (not exists user in set users & user.id = id)
 	post RESULT in set users;
 	
+	-- Removes a user from the system, given its ID
 	public removeUser: nat ==> ()
 	removeUser(userID) == (
 		dcl user: User := iota u in set users & u.getID() = userID;
@@ -82,11 +85,13 @@ operations
 	pre exists u in set users & u.id = userID
 	post not exists u in set users & u.id = userID;
 	
+	-- Removes a user from the system
 	public removeUser: User ==> ()
 	removeUser(user) == users := users \ {user}
 	pre user in set users
 	post user not in set users;
 	
+	-- Registers a card in the system with a given expiration date
 	public registerCard: DateUtil`Date * nat ==> Card
 	registerCard(doe, id) == (
 		dcl accessCard: Card := new Card(doe, id);
@@ -97,6 +102,7 @@ operations
 	pre (not exists accessCard in set facilityAccessCards & accessCard.id = id)
 	post RESULT in set facilityAccessCards;
 	
+	-- Registes a card in the system
 	public registerCard: nat ==> Card
 	registerCard(id) == (
 		dcl accessCard: Card := new Card(id);
@@ -107,11 +113,13 @@ operations
 	pre (not exists accessCard in set facilityAccessCards & accessCard.id = id)
 	post RESULT in set facilityAccessCards;
 	
+	-- Removes a given card from the facility, removing it from the user that may have it and any card groups it belongs to
 	public removeCard: Card ==> ()
 	removeCard(accessCard) == facilityAccessCards := facilityAccessCards \ {accessCard}
 	pre accessCard in set facilityAccessCards
 	post accessCard not in set facilityAccessCards;
 	
+	-- Removes a card with the given ID from the facility, removing it from the user that may have it and any card groups it belongs to
 	public removeCard: nat ==> ()
 	removeCard(cardID) == (
 		dcl accessCard: Card := iota c in set facilityAccessCards & c.getID() = cardID;
@@ -120,6 +128,7 @@ operations
 	pre exists c in set facilityAccessCards & c.id = cardID
 	post not exists c in set facilityAccessCards & c.id = cardID;
 	
+	-- Attributes a card to a user
 	public allocateCard: User * Card ==> ()
 	allocateCard(user, accessCard) == (
 		user.setAcessCard(accessCard);
@@ -127,6 +136,32 @@ operations
 	pre not exists u in set users & u.accessCard = accessCard
 	post exists1 u in set users & u.accessCard = accessCard;
 	
+	-- Attributes a card to a user, given the user and card id
+	public allocateCard: nat * nat ==> ()
+	allocateCard(userID, accessCardID) == (
+		dcl accessCard: Card := iota c in set facilityAccessCards & c.id = accessCardID;
+		dcl user: User := iota u in set users & u.id = userID;
+		user.setAcessCard(accessCard);
+	)
+	pre not exists u in set users & (u.id = userID and u.accessCard.id = accessCardID)
+	post exists1 u in set users & (u.id = userID and u.accessCard.id = accessCardID);
+	
+	-- Returns the user with a given card
+	public getUserWithCard: Card ==> User
+	getUserWithCard(accessCard) == (
+		return iota user in set users & user.accessCard = accessCard;
+	)
+	pre exists u in set users & u.accessCard = accessCard;
+	
+	-- Returns the user with a card with a matching id
+	public getUserWithCard: nat ==> User
+	getUserWithCard(accessCardID) == (
+		dcl accessCard: Card := iota c in set facilityAccessCards & c.id = accessCardID;
+		return getUserWithCard(accessCard);
+	)
+	pre exists u in set users & (u.accessCard.id = accessCardID);
+	
+	-- Returns all rules that have influence in a given sector, for a given access card
 	public getRelatedRules: Card * Sector ==> set of AccessRule
 	getRelatedRules(accessCard, accessedSector) == (
 		dcl relatedRules: set of AccessRule := {};
@@ -137,6 +172,7 @@ operations
 		return relatedRules;
 	);
 	
+	-- Requests access given a requesting user, the sector access has been requested to, and the date of request
 	public requestAccess: User * Sector * DateUtil`Date ==> AccessRule`Permission * AccessRequest
 	requestAccess(requester, sector, requestDate) == (
 		dcl relatedRules: set of AccessRule := getRelatedRules(requester.getAccessCard(), sector);
