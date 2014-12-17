@@ -58,12 +58,9 @@ operations
 		dcl parentSector:[Sector] := self.parent;
 		dcl ancestors: set of Sector := {};
 		
-		if parentSector <> nil then (
+		while(parentSector <> nil) do (
 			ancestors := ancestors union {parentSector};
-			while(parentSector <> nil) do (
-				ancestors := ancestors union {parentSector.parent};
-				parentSector := parentSector.parent
-			);
+			parentSector := parentSector.parent
 		);
 		
 		return ancestors
