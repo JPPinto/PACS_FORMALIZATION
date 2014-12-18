@@ -196,20 +196,23 @@ operations
  	and not exists cardGroup in set cardGroups & cardGroup.groupName = groupName
  post exists1 cardGroup in set cardGroups & cardGroup.groupName = groupName;
  
- -- Removes a card group from the system, given its name
-	public removeCardGroup: CardGroup`CardGroupName ==> ()
+ -- Removes a card group from the system, given its name and returns the removed group
+	public removeCardGroup: CardGroup`CardGroupName ==> CardGroup
 	removeCardGroup(groupName) == (
 		dcl group: CardGroup := iota g in set cardGroups & g.groupName = groupName;
-		removeCardGroup(group);
+		return removeCardGroup(group);
 	)
 	pre exists g in set cardGroups & g.groupName = groupName
-	post not exists g in set cardGroups & g.groupName = groupName;
+	post RESULT not in set cardGroups;
 	
-	-- Removes a card group from the system
-	public removeCardGroup: CardGroup ==> ()
-	removeCardGroup(group) == cardGroups := cardGroups \ {group}
+	-- Removes a card group from the system, returns the removed group
+	public removeCardGroup: CardGroup ==> CardGroup
+	removeCardGroup(group) == (
+		cardGroups := cardGroups \ {group};
+		return group;
+	)
 	pre group in set cardGroups
-	post group not in set cardGroups;
+	post RESULT not in set cardGroups;
  
  -- Removes a card from a group, given a card id and a group name
  -- The given group must contain the card, and if the group would be left empty, it must be removed
@@ -218,7 +221,11 @@ operations
 	dcl cardGroup: CardGroup := iota g in set cardGroups & g.groupName = groupName;
 	dcl accessCard: Card := iota c in set facilityAccessCards & c.id = cardID;
 	if(card cardGroup.accessCards > 1) then cardGroup.removeCard(accessCard)
- 	else removeCardGroup(cardGroup);
+ 	else (
+ 		dcl removedCardGroup: CardGroup := removeCardGroup(cardGroup);
+ 		return;
+ 	);
+ 	return;
  )
  pre (exists g in set cardGroups & (g.groupName = groupName and exists c in set g.accessCards & c.id = cardID))
  post not exists g in set cardGroups & (g.groupName = groupName and exists c in set g.accessCards & c.id = cardID);
@@ -228,7 +235,11 @@ operations
  public removeCardFromGroup: Card * CardGroup ==> ()
  removeCardFromGroup(accessCard, cardGroup) == (
  	if(card cardGroup.accessCards > 1) then cardGroup.removeCard(accessCard)
- 	else removeCardGroup(cardGroup);
+ 	else (
+ 		dcl removedCardGroup: CardGroup := removeCardGroup(cardGroup);
+ 		return;
+ 	);
+ 	return;
  )
  pre accessCard in set cardGroup.accessCards
  post (accessCard not in set cardGroup.accessCards) or (cardGroup not in set cardGroups);

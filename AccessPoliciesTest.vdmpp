@@ -66,6 +66,27 @@ class AccessPoliciesTest
 		)
 		post forall groupName in set dom cardGroupsInfo &
 			(exists1 cardGroup in set facility.cardGroups & cardGroup.groupName = groupName);
+			
+		-- Card group removal scenario
+		public removeCardGroupScenario: Facility * set of CardGroup`CardGroupName ==> set of CardGroup
+		removeCardGroupScenario(facility, cardGroupsToRemoveNames) == (
+			dcl removedCardGroups: set of CardGroup := {};
+			for all cardGroupName in set cardGroupsToRemoveNames do (
+				dcl removedCardGroup: CardGroup := facility.removeCardGroup(cardGroupName);
+				removedCardGroups := removedCardGroups union {removedCardGroup};
+			);
+			
+			return removedCardGroups;
+		)
+		pre forall groupName in set cardGroupsToRemoveNames & (exists group in set facility.cardGroups & group.groupName = groupName); 
+		
+		-- Card removal from card group scenario (given a card id and a card group name)
+		public removeCardFromCardGroupScenario: Facility * map CardGroup`CardGroupName to set of nat ==> ()
+		removeCardFromCardGroupScenario(facility, cardsToRemoveFromGroup) == (
+			for all cardGroupName in set dom cardsToRemoveFromGroup do (
+				for all accessCard in set cardsToRemoveFromGroup(cardGroupName) do facility.removeCardFromGroup(accessCard, cardGroupName);
+			);
+		);
 		
 		-- Configure users scenario
 		
@@ -88,7 +109,9 @@ class AccessPoliciesTest
 			
 			dcl normalCardsToCreate: set of nat := {5, 6, 7, 8, 9};
 			
-			dcl cardsThatWillBeDeleted: set of nat := {10};
+			dcl cardThatWillBeDeleted1: set of nat := {10};
+			dcl cardThatWillBeDeleted2: set of nat := {11};
+			dcl cardThatWillBeRemovedFromGroup: set of nat := {12};
 			
 			-- Register cards with a predefined expiration date
 			dcl createdExpirableCards: set of Card := configureCardsScenario(facility, expirableCardsToCreate);
@@ -97,28 +120,55 @@ class AccessPoliciesTest
 			dcl createdNormalCards: set of Card := configureCardsScenario(facility, normalCardsToCreate);
 			
 			-- Register cards for future removal
-			dcl cardsToRemove: set of Card := configureCardsScenario(facility, cardsThatWillBeDeleted);
+			dcl cardToRemove1: set of Card := configureCardsScenario(facility, cardThatWillBeDeleted1);
+			dcl cardToRemove2: set of Card := configureCardsScenario(facility, cardThatWillBeDeleted2);
+			
+			-- Register cards for future removal from group (not from the facility)
+			dcl cardToRemoveFromGroup: set of Card := configureCardsScenario(facility, cardThatWillBeRemovedFromGroup);
 			
 			dcl cardGroupsToCreate: map CardGroup`CardGroupName to set of Card := {
 				"staff" |-> createdNormalCards,
 				"students" |-> createdExpirableCards,
-				"etc" |-> cardsToRemove
+				"removalByCardDeletion" |-> cardToRemove1 union cardToRemove2 union cardToRemoveFromGroup,
+				"removalByCardDeletionWithCardIDAndGroupName" |-> cardToRemoveFromGroup,
+				"manualRemoval" |-> cardToRemove2
 			};
 			
-			-- Register sector groups
+			-- Register card groups
 			dcl staffCardGroup: set of CardGroup := configureCardGroupsScenario(facility, cardGroupsToCreate);
 			
+			-- Assert that the right number of cards were created
 			assertEqual(card createdExpirableCards, card dom expirableCardsToCreate);
 			assertEqual(card createdNormalCards, card normalCardsToCreate);
 			
-			assertTrue(staffCardGroup subset facility.cardGroups);
+			-- Assert that the card groups were created and belong in the facility's card group sector
+			assertTrue(staffCardGroup subset facility.cardGroups); 
 			
-			-- Remove a card. This should also remove the "etc" group, since it was the only card present
+			-- Remove a card from the group, given the card id and the group name. This should leave the "removalByCardDeletion" group with only 1 card left.
+			removeCardFromCardGroupScenario(facility, { "removalByCardDeletion" |-> cardThatWillBeRemovedFromGroup });
+			assertTrue(not exists group in set facility.cardGroups & (group.groupName = "removalByCardDeletion" and cardToRemoveFromGroup subset group.accessCards));
+			
+			-- Remove a card from the group, given the card id and the group name.
+			-- This should cause the deletion of the "removalByCardDeletionWithCardIDAndGroupName" card group, since it had 1 card left
+			removeCardFromCardGroupScenario(facility, { "removalByCardDeletionWithCardIDAndGroupName" |-> cardThatWillBeRemovedFromGroup });
+			assertTrue(not exists group in set facility.cardGroups & (group.groupName = "removalByCardDeletionWithCardIDAndGroupName")); 
+			
+			-- Remove the sector group "manualRemoval" and check if it really was removed
+			let removedCardGroups = removeCardGroupScenario(facility, {"manualRemoval"}) in assertTrue(not exists cardGroup in set removedCardGroups & cardGroup in set facility.cardGroups);
+			assertTrue(not exists group in set facility.cardGroups & group.groupName = "manualRemoval");
+			
+			-- Remove a card. This should leave the "removalByCardDeletion" card group with 1 card left
+			cardRemoveScenario(facility, 11);
+			assertTrue(not exists accessCard in set facility.facilityAccessCards & accessCard.id = 11);
+			assertTrue(not exists group in set facility.cardGroups & (group.groupName = "removalByCardDeletion" and cardToRemove2 subset group.accessCards));
+			
+			-- Remove a card. This should also remove the "removalByCardDeletion" card group, since it was the only card left
 			cardRemoveScenario(facility, 10);
 			assertTrue(not exists accessCard in set facility.facilityAccessCards & accessCard.id = 10);
-			assertTrue(not exists group in set facility.cardGroups & group.groupName = "etc");
+			assertTrue(not exists group in set facility.cardGroups & group.groupName = "removalByCardDeletion");
 		);
-			
+		
+		-- Entry point to run tests
 		public static testAll: () ==> ()
 		testAll() == (
 			dcl school : Facility := new Facility("school");
