@@ -397,12 +397,12 @@ operations
 	/** Access rules and requesting **/
  -----------------------------------
 	
-	-- Returns all rules that have influence in a given sector, for a given access card
-	public getRelatedRules: Card * Sector ==> set of AccessRule
-	getRelatedRules(accessCard, accessedSector) == (
+	-- Returns all rules that have influence in a given sector, for a given access card. not expired at time of given date
+	public getValidRelatedRules: Card * Sector * DateUtil`Date ==> set of AccessRule
+	getValidRelatedRules(accessCard, accessedSector, date) == (
 		dcl relatedRules: set of AccessRule := {};
 		for all rule in set facilityAccessRules do (
-			if rule.ruleRefersToAccessCardAndSector(accessCard, accessedSector) then relatedRules := relatedRules union {rule};
+			if (rule.ruleRefersToAccessCardAndSector(accessCard, accessedSector) and not rule.isExpired(date)) then relatedRules := relatedRules union {rule};
 		);
 		
 		return relatedRules;
@@ -411,7 +411,7 @@ operations
 	-- Requests access given a requesting user, the sector access has been requested to, and the date of request
 	public requestAccess: User * Sector * DateUtil`Date ==> AccessRule`Permission * AccessRequest
 	requestAccess(requester, sector, requestDate) == (
-		dcl relatedRules: set of AccessRule := getRelatedRules(requester.getAccessCard(), sector);
+		dcl relatedRules: set of AccessRule := getValidRelatedRules(requester.getAccessCard(), sector, requestDate);
 		dcl highestPriorityRule: AccessRule := AccessRule`getHighestPriorityValidRuleFromSet(relatedRules, requestDate);
 		dcl finalResult: AccessRule`Permission := highestPriorityRule.getPermission();
 		
@@ -422,7 +422,8 @@ operations
 		
 		return mk_(finalResult, loggedRequest);
 	)
-	pre requester in set users 
+	pre requester in set users
+		and sector in set sectors
 
 traces
 -- TODO Define Combinatorial Test Traces here

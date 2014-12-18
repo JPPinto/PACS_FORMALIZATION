@@ -16,25 +16,31 @@ values
 	public static HIGH: nat1 = 3;
 	
 instance variables
-	private sectors: SectorGroup;
-	private cards: CardGroup;
-	private permission: Permission;
+	public sectorGroup: [SectorGroup];
+	public sector: [Sector];
+	public cardGroup: [CardGroup];
+	public accessCard: [Card];
+	public permission: Permission;
 	
-	private startDate: DateUtil`Date;
-	private endDate: [DateUtil`Date] := nil;
+	public startDate: DateUtil`Date;
+	public endDate: [DateUtil`Date] := nil;
 	
-	private priority: nat1 := LOW;
+	public priority: nat1 := LOW;
 	
 	inv if endDate <> nil then DateUtil`isAfter(endDate, startDate) else true;
 	inv priority in set {LOW, MID, HIGH};
+	inv if sectorGroup <> nil then sector = nil else sector <> nil;
+	inv if cardGroup <> nil then accessCard = nil else accessCard <> nil;
 	
 operations
 
-	-- Create an access rule with specified expiration date
-	public AccessRule: SectorGroup * CardGroup * Permission * nat1 * DateUtil`Date * DateUtil`Date ==> AccessRule
-	AccessRule(accessSectors, accessCards, accessPermission, rulePriority, ruleStartDate, ruleEndDate) == (
-		sectors := accessSectors;
-		cards := accessCards;
+	-- Create an access rule given an access card and a sector
+	public AccessRule: Sector * Card * Permission * nat1 * DateUtil`Date * [DateUtil`Date] ==> AccessRule
+	AccessRule(relatedSector, relatedAccessCard, accessPermission, rulePriority, ruleStartDate, ruleEndDate) == (
+		sectorGroup := nil;
+		sector := relatedSector;
+		cardGroup := nil;
+		accessCard := relatedAccessCard;
 		permission := accessPermission;
 		startDate := ruleStartDate;
 		endDate := ruleEndDate;
@@ -43,22 +49,62 @@ operations
 		
 		return self
 	)
-	pre DateUtil`isAfter(ruleEndDate, ruleStartDate)
+	pre if ruleEndDate <> nil then DateUtil`isAfter(ruleEndDate, ruleStartDate) else true
 		and rulePriority in set {LOW, MID, HIGH};
-	
-	-- Create an access rule without expiration date
-	public AccessRule: SectorGroup * CardGroup * Permission * nat1 * DateUtil`Date ==> AccessRule
-	AccessRule(accessSectors, accessCards, accessPermission, rulePriority, ruleStartDate) == (
-		sectors := accessSectors;
-		cards := accessCards;
+		
+	-- Create an access rule given an access card and a sector group
+	public AccessRule: SectorGroup * Card * Permission * nat1 * DateUtil`Date * [DateUtil`Date] ==> AccessRule
+	AccessRule(relatedSectorGroup, relatedAccessCard, accessPermission, rulePriority, ruleStartDate, ruleEndDate) == (
+		sectorGroup := relatedSectorGroup;
+		sector := nil;
+		cardGroup := nil;
+		accessCard := relatedAccessCard;
 		permission := accessPermission;
 		startDate := ruleStartDate;
+		endDate := ruleEndDate;
 		
 		priority := rulePriority;
 		
 		return self
 	)
-	pre rulePriority in set {LOW, MID, HIGH};
+	pre if ruleEndDate <> nil then DateUtil`isAfter(ruleEndDate, ruleStartDate) else true
+		and rulePriority in set {LOW, MID, HIGH};
+		
+	-- Create an access rule given a card group and a sector
+	public AccessRule: Sector * CardGroup * Permission * nat1 * DateUtil`Date * [DateUtil`Date] ==> AccessRule
+	AccessRule(relatedSector, relatedCardGroup, accessPermission, rulePriority, ruleStartDate, ruleEndDate) == (
+		sectorGroup := nil;
+		sector := relatedSector;
+		cardGroup := relatedCardGroup;
+		accessCard := nil;
+		permission := accessPermission;
+		startDate := ruleStartDate;
+		endDate := ruleEndDate;
+		
+		priority := rulePriority;
+		
+		return self
+	)
+	pre if ruleEndDate <> nil then DateUtil`isAfter(ruleEndDate, ruleStartDate) else true
+		and rulePriority in set {LOW, MID, HIGH};
+		
+	-- Create an access rule given a card group and a sector group
+	public AccessRule: SectorGroup * CardGroup * Permission * nat1 * DateUtil`Date * [DateUtil`Date] ==> AccessRule
+	AccessRule(relatedSectorGroup, relatedCardGroup, accessPermission, rulePriority, ruleStartDate, ruleEndDate) == (
+		sectorGroup := relatedSectorGroup;
+		sector := nil;
+		cardGroup := relatedCardGroup;
+		accessCard := nil;
+		permission := accessPermission;
+		startDate := ruleStartDate;
+		endDate := ruleEndDate;
+		
+		priority := rulePriority;
+		
+		return self
+	)
+	pre if ruleEndDate <> nil then DateUtil`isAfter(ruleEndDate, ruleStartDate) else true
+		and rulePriority in set {LOW, MID, HIGH};
 	
 	public getPriority: () ==> nat1
 	getPriority() == return priority;
@@ -77,11 +123,14 @@ operations
 	isExpired(currentDate) == return DateUtil`isAfter(currentDate, endDate);
 	
 	public ruleRefersToAccessCard: Card ==> bool
-	ruleRefersToAccessCard(accessCard) == return cards.containsCard(accessCard);
+	ruleRefersToAccessCard(cardToCheck) == return (accessCard = cardToCheck or cardGroup.containsCard(accessCard));
+	
+	public ruleRefersToSector: Sector ==> bool
+	ruleRefersToSector(sectorToCheck) == return (sector = sectorToCheck or sectorGroup.containsSector(sectorToCheck));
 	
 	public ruleRefersToAccessCardAndSector: Card * Sector ==> bool
-	ruleRefersToAccessCardAndSector(accessCard, sector) ==
-		return cards.containsCard(accessCard) and sectors.containsSector(sector);
+	ruleRefersToAccessCardAndSector(cardToCheck, sectorToCheck) ==
+		return ruleRefersToAccessCard(cardToCheck) and ruleRefersToSector(sectorToCheck);
 	
 	-- This returns a full list of concerned sectors for this rule. Bearing in mind that someone with access to
 	-- a particular sector must also have access to the parent sectors, this operation returns:
@@ -90,12 +139,12 @@ operations
 	-- to a specific sector doesn't necessarily mean we can't access its parent, by this rule):
 	public fullListOfConcernedSectors: () ==> set of Sector
 	fullListOfConcernedSectors() == (
-		dcl mainSectors: set of Sector := sectors.getSectors();
+		dcl mainSectors: set of Sector := (if sectorGroup <> nil then sectorGroup.getSectors() else {sector});
 		dcl accessableSectors: set of Sector := mainSectors;
 		
 		if permission = <ALLOW> then (
-			for all sector in set mainSectors do (
-				accessableSectors := accessableSectors union sector.getAncestors();
+			for all mainSector in set mainSectors do (
+				accessableSectors := accessableSectors union mainSector.getAncestors();
 			);
 		);
 		
