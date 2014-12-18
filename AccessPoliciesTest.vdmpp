@@ -146,11 +146,25 @@ class AccessPoliciesTest
 		)
 		post RESULT subset facility.sectors and card RESULT = card sectorIDsAndParents;
 		
-		-- Remove sector scenario
-		-- TODO
-		
 		-- Configure sector groups scenario
-		-- TODO
+		public configureSectorGroupsScenario: Facility * set of (SectorGroup`SectorGroupName * set of Sector) ==> set of SectorGroup
+		configureSectorGroupsScenario(facility, sectorGroupNamesAndMembers) == (
+			dcl createdSectorGroups: set of SectorGroup := {};
+			for all sectorGroupInfo in set sectorGroupNamesAndMembers do (
+				dcl newSectorGroup: SectorGroup := facility.registerSectorGroup(sectorGroupInfo.#1, sectorGroupInfo.#2);
+				createdSectorGroups := createdSectorGroups union {newSectorGroup};
+			);
+			
+			return createdSectorGroups;
+		)
+		post RESULT subset facility.sectorGroups and card RESULT = card sectorGroupNamesAndMembers;
+		
+		-- Add sectors to a sector group scenario
+		-- Sector group with given name must exist
+		public addSectorsToSectorGroupScenario: Facility * SectorGroup`SectorGroupName * set of Sector ==> ()
+		addSectorsToSectorGroupScenario(facility, groupName, sectorsToAdd) == (
+			for all sector in set sectorsToAdd do facility.addSectorToGroup(sector.id, groupName);
+		);
 		
 		-- Ask for access scenario
 		-- TODO
@@ -285,7 +299,7 @@ class AccessPoliciesTest
 			addCardToCardGroupScenario(facility, "staff", 12);
 			
 			-- Create a few parent/main sectors
-			let mainSectors = configureSectorsScenario(facility, {"classBuilding", "secretariate", "garage"}) in (
+			let mainSectors = configureSectorsScenario(facility, {"classBuilding", "auditorium", "secretariate", "boardRoom", "garage"}) in (
 				assertTrue(mainSectors subset facility.sectors);
 			);
 			
@@ -293,9 +307,10 @@ class AccessPoliciesTest
 			let childSectors = configureSectorsScenario(facility, {
 				mk_("classRoom1", facility.getSectorByID("classBuilding")),
 				mk_("classRoom2", facility.getSectorByID("classBuilding")),
-				mk_("classRoom3", facility.getSectorByID("classBuilding"))
+				mk_("classRoom3", facility.getSectorByID("classBuilding")),
+				mk_("laboratory1", facility.getSectorByID("classBuilding"))
 			}) union configureSectorsScenario(facility, {
-				mk_("laboratory1", facility.getSectorByID("classBuilding")),
+				mk_("chemicalCloset", facility.getSectorByID("laboratory1")),
 				mk_("computer1", facility.getSectorByID("classRoom1")),
 				mk_("parkingSpace1", facility.getSectorByID("garage")),
 				mk_("parkingSpace2", facility.getSectorByID("garage")),
@@ -307,6 +322,7 @@ class AccessPoliciesTest
 				assertTrue(facility.getSectorByID("parkingSpace3").parent = facility.getSectorByID("garage"));
 				assertTrue(facility.getSectorByID("computer1").parent = facility.getSectorByID("classRoom1"));
 				assertTrue(facility.getSectorByID("laboratory1").parent = facility.getSectorByID("classBuilding"));
+				assertTrue(facility.getSectorByID("chemicalCloset").parent = facility.getSectorByID("laboratory1"));
 				assertTrue(facility.getSectorByID("classRoom3").parent = facility.getSectorByID("classBuilding"));
 				assertTrue(facility.getSectorByID("classRoom2").parent = facility.getSectorByID("classBuilding"));
 				assertTrue(facility.getSectorByID("classRoom1").parent = facility.getSectorByID("classBuilding"));
@@ -318,6 +334,55 @@ class AccessPoliciesTest
 			assertTrue(not exists sector in set facility.sectors & sector.id = "parkingSpace1");
 			assertTrue(not exists sector in set facility.sectors & sector.id = "parkingSpace2");
 			assertTrue(not exists sector in set facility.sectors & sector.id = "parkingSpace3");
+			
+			-- Add sector groups
+			let sectorGroups = configureSectorGroupsScenario(facility, {
+				mk_("teachingAreas", {facility.getSectorByID("classBuilding"), facility.getSectorByID("auditorium"), facility.getSectorByID("boardRoom")}),
+				mk_("administrativeAreas", {facility.getSectorByID("secretariate"), facility.getSectorByID("boardRoom")})
+			}) in (
+				assertTrue(sectorGroups subset facility.sectorGroups);
+			);
+			
+			-- Add more sectors to a sector group
+			addSectorsToSectorGroupScenario(facility, "teachingAreas", {
+				facility.getSectorByID("classRoom1"),
+				facility.getSectorByID("classRoom2"),
+				facility.getSectorByID("classRoom3"),
+				facility.getSectorByID("laboratory1"),
+				facility.getSectorByID("chemicalCloset")
+			});
+			
+			-- Remove sectors from a sector group until it has no remaining sectors and is deleted. This version uses SectorGroup and Sector objects
+			let sectorGroupToRemove = configureSectorGroupsScenario(facility, {mk_("sectorGroupToRemove",
+				{facility.getSectorByID("classRoom1"), facility.getSectorByID("classRoom2")})})
+				in (
+					-- Remove a sector, group should still have one left
+					facility.removeSectorFromGroup(facility.getSectorByID("classRoom1"), facility.getSectorGroupByName("sectorGroupToRemove"));
+					assertTrue(not facility.getSectorGroupByName("sectorGroupToRemove").containsSector(facility.getSectorByID("classRoom1")));
+					assertTrue(facility.getSectorGroupByName("sectorGroupToRemove") in set facility.sectorGroups);
+					
+					-- Remove another sector, group should be deleted since it has no sectors left
+					facility.removeSectorFromGroup(facility.getSectorByID("classRoom2"), facility.getSectorGroupByName("sectorGroupToRemove"));
+					assertTrue(not exists sectorGroup in set facility.sectorGroups & sectorGroup.groupName = "sectorGroupToRemove");
+				);
+				
+				-- Remove sectors from a sector group until it has no remaining sectors and is deleted. This version uses SectorGroupName and SectorID
+				let sectorGroupToRemove = configureSectorGroupsScenario(facility, {mk_("sectorGroupToRemove",
+				{facility.getSectorByID("classRoom1"), facility.getSectorByID("classRoom2")})})
+				in (
+					-- Remove a sector, group should still have one left
+					facility.removeSectorFromGroup("classRoom1", "sectorGroupToRemove");
+					assertTrue(not facility.getSectorGroupByName("sectorGroupToRemove").containsSector(facility.getSectorByID("classRoom1")));
+					assertTrue(facility.getSectorGroupByName("sectorGroupToRemove") in set facility.sectorGroups);
+					
+					-- Remove another sector, group should be deleted since it has no sectors left
+					facility.removeSectorFromGroup("classRoom2", "sectorGroupToRemove");
+					assertTrue(not exists sectorGroup in set facility.sectorGroups & sectorGroup.groupName = "sectorGroupToRemove");
+				);
+				
+				-- Remove a sector from all groups
+				facility.removeSectorFromAllGroups(facility.getSectorByID("boardRoom"));
+				assertTrue(forall sectorGroup in set facility.sectorGroups & (facility.getSectorByID("boardRoom") not in set sectorGroup.sectors));
 		);
 		
 		-- Entry point to run tests

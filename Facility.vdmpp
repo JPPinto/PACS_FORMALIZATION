@@ -94,6 +94,8 @@ operations
  removeSectorByID(sectorID) == (
  	dcl removedSector: Sector := getSectorByID(sectorID);
  	sectors := sectors \ {removedSector};
+ 	-- Remove from all belonging sector groups
+ 	removeSectorFromAllGroups(removedSector);
  	-- Delete children as well
  	for all sector in set sectors do (
  		if(sector.parent <> nil and sector.parent.id = sectorID) then removeSectorByID(sector.id);
@@ -166,7 +168,6 @@ operations
  		if sectorGroup.containsSector(sector) then removeSectorFromGroup(sector, sectorGroup);
  	);
  )
- pre exists sectorGroup in set sectorGroups & (sector in set sectorGroup.sectors)
  post not exists sectorGroup in set sectorGroups & (sector in set sectorGroup.sectors);
  
  -- Adds a sector to a group, given the sector id and the group name
@@ -180,8 +181,8 @@ operations
  post exists1 group in set sectorGroups & (group.groupName = sectorGroupName and exists1 sector in set group.sectors & sector.id = sectorID);
  
  -- Retrieves a sector group given its name
- public getSectorGroupByID: SectorGroup`SectorGroupName ==> SectorGroup
- getSectorGroupByID(groupname) == (
+ public getSectorGroupByName: SectorGroup`SectorGroupName ==> SectorGroup
+ getSectorGroupByName(groupname) == (
  	return iota g in set sectorGroups & g.groupName = groupname;
  );
 	
@@ -254,6 +255,7 @@ operations
 	post RESULT in set facilityAccessCards;
 	
 	-- Removes a given card from the facility, removing it from the user that may have it and any card groups it belongs to
+	-- TODO: Also must remove from access rules
 	public removeCard: Card ==> ()
 	removeCard(accessCard) == (
 		if (exists u in set users & (u.accessCard = accessCard)) then (
