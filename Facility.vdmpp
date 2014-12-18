@@ -178,6 +178,12 @@ operations
  )
  pre not exists group in set sectorGroups & (group.groupName = sectorGroupName and exists sector in set group.sectors & sector.id = sectorID)
  post exists1 group in set sectorGroups & (group.groupName = sectorGroupName and exists1 sector in set group.sectors & sector.id = sectorID);
+ 
+ -- Retrieves a sector group given its name
+ public getSectorGroupByID: SectorGroup`SectorGroupName ==> SectorGroup
+ getSectorGroupByID(groupname) == (
+ 	return iota g in set sectorGroups & g.groupName = groupname;
+ );
 	
 	 -------------------------
 	/**  User management  **/
