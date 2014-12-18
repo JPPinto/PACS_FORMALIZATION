@@ -61,29 +61,35 @@ operations
  ---------------------------
  
  -- Register a new sector without specifying a parent sector
- -- TODO: Verify if there's no other sector with same ID
  public registerSector: Sector`SectorID ==> Sector
  registerSector(sectorID) == (
  	dcl newSector: Sector := new Sector(sectorID);
  	sectors := sectors union {newSector};
  
  	return newSector;
- );
+ )
+ pre forall sector in set sectors & sector.id <> sectorID
+ post exists1 sector in set sectors & sector.id = sectorID;
  
   -- Register a new sector with a parent sector
-  -- TODO: Verify if there's no other sector with same ID
  public registerSector: Sector`SectorID * Sector ==> Sector
  registerSector(sectorID, parentSector) == (
  	dcl newSector: Sector := new Sector(sectorID, parentSector);
  	sectors := sectors union {newSector};
  
  	return newSector;
- );
+ )
+ pre forall sector in set sectors & sector.id <> sectorID
+ post exists1 sector in set sectors & sector.id = sectorID;
  
+ -- Get a registered sector, given its ID
+ public getSectorByID: Sector`SectorID ==> Sector
+ getSectorByID(sectorID) == return iota s in set sectors & s.id = sectorID
+ pre exists1 s in set sectors & s.id = sectorID;
  
  -- Remove a sector by ID
- -- Must remove sector from the corresponding sector group and policy
- -- TODO
+ -- TODO: Must remove sector from the corresponding sector group and policy
+ 
  
 	 --------------------------------
 	/**  Sector Group management  **/

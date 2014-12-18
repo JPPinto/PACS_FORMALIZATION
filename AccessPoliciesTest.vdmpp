@@ -289,7 +289,28 @@ class AccessPoliciesTest
 				assertTrue(mainSectors subset facility.sectors);
 			);
 			
-			
+			-- Here we create some sectors that are children of the main sectors, including some that are children of children.
+			let childSectors = configureSectorsScenario(facility, {
+				mk_("classRoom1", facility.getSectorByID("classRooms")),
+				mk_("classRoom2", facility.getSectorByID("classRooms")),
+				mk_("classRoom3", facility.getSectorByID("classRooms"))
+			}) union configureSectorsScenario(facility, {
+				mk_("laboratory1", facility.getSectorByID("classRooms")),
+				mk_("computer1", facility.getSectorByID("classRoom1")),
+				mk_("parkingSpace1", facility.getSectorByID("garage")),
+				mk_("parkingSpace2", facility.getSectorByID("garage")),
+				mk_("parkingSpace3", facility.getSectorByID("garage"))
+			}) in (
+				assertTrue(childSectors subset facility.sectors);
+				assertTrue(facility.getSectorByID("parkingSpace1").parent = facility.getSectorByID("garage"));
+				assertTrue(facility.getSectorByID("parkingSpace2").parent = facility.getSectorByID("garage"));
+				assertTrue(facility.getSectorByID("parkingSpace3").parent = facility.getSectorByID("garage"));
+				assertTrue(facility.getSectorByID("computer1").parent = facility.getSectorByID("classRoom1"));
+				assertTrue(facility.getSectorByID("laboratory1").parent = facility.getSectorByID("classRooms"));
+				assertTrue(facility.getSectorByID("classRoom3").parent = facility.getSectorByID("classRooms"));
+				assertTrue(facility.getSectorByID("classRoom2").parent = facility.getSectorByID("classRooms"));
+				assertTrue(facility.getSectorByID("classRoom1").parent = facility.getSectorByID("classRooms"));
+			);
 		);
 		
 		-- Entry point to run tests
