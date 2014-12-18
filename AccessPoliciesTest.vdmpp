@@ -120,11 +120,40 @@ class AccessPoliciesTest
 		)
 		post RESULT subset facility.users and card RESULT = card usersToCreate;
 		
-		-- Configure sectors scenario
+		-- Configure sectors scenario, without parents
+		public configureSectorsScenario: Facility * set of Sector`SectorID ==> set of Sector
+		configureSectorsScenario(facility, sectorIDs) == (
+			dcl createdSectors: set of Sector := {};
+			for all sectorID in set sectorIDs do (
+				dcl newSector: Sector := facility.registerSector(sectorID);
+				createdSectors := createdSectors union {newSector};
+			);
+			
+			return createdSectors;
+		)
+		post RESULT subset facility.sectors and card RESULT = card sectorIDs;
+		
+		-- Configure sectors scenario with parents
+		public configureSectorsScenario: Facility * set of (Sector`SectorID * Sector) ==> set of Sector
+		configureSectorsScenario(facility, sectorIDsAndParents) == (
+			dcl createdSectors: set of Sector := {};
+			for all sectorInfo in set sectorIDsAndParents do (
+				dcl newSector: Sector := facility.registerSector(sectorInfo.#1, sectorInfo.#2);
+				createdSectors := createdSectors union {newSector};
+			);
+			
+			return createdSectors;
+		)
+		post RESULT subset facility.sectors and card RESULT = card sectorIDsAndParents;
+		
+		-- Remove sector scenario
+		-- TODO
 		
 		-- Configure sector groups scenario
+		-- TODO
 		
 		-- Ask for access scenario
+		-- TODO
 		
 		public testSuccessfulConfiguration: Facility ==> ()
 		testSuccessfulConfiguration(facility) == (
@@ -220,6 +249,9 @@ class AccessPoliciesTest
 					userToRemove2 = facility.registerUser("removeMe2", 7) in (
 					facility.removeUser(userToRemove1);
 					facility.removeUser(userToRemove2.id);
+					
+					assertTrue(userToRemove1 not in set facility.users);
+					assertTrue(userToRemove2 not in set facility.users);
 				);
 			);
 			
@@ -251,6 +283,13 @@ class AccessPoliciesTest
 			
 			-- Manually add a card to a group
 			addCardToCardGroupScenario(facility, "staff", 12);
+			
+			-- Create a few parent/main sectors
+			let mainSectors = configureSectorsScenario(facility, {"classRooms", "secretariate", "garage"}) in (
+				assertTrue(mainSectors subset facility.sectors);
+			);
+			
+			
 		);
 		
 		-- Entry point to run tests

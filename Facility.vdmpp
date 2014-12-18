@@ -56,6 +56,41 @@ operations
 	)
 	pre facilityName <> "";
 	
+	 --------------------------
+	/**  Sector management  **/
+ ---------------------------
+ 
+ -- Register a new sector without specifying a parent sector
+ -- TODO: Verify if there's no other sector with same ID
+ public registerSector: Sector`SectorID ==> Sector
+ registerSector(sectorID) == (
+ 	dcl newSector: Sector := new Sector(sectorID);
+ 	sectors := sectors union {newSector};
+ 
+ 	return newSector;
+ );
+ 
+  -- Register a new sector with a parent sector
+  -- TODO: Verify if there's no other sector with same ID
+ public registerSector: Sector`SectorID * Sector ==> Sector
+ registerSector(sectorID, parentSector) == (
+ 	dcl newSector: Sector := new Sector(sectorID, parentSector);
+ 	sectors := sectors union {newSector};
+ 
+ 	return newSector;
+ );
+ 
+ 
+ -- Remove a sector by ID
+ -- Must remove sector from the corresponding sector group and policy
+ -- TODO
+ 
+	 --------------------------------
+	/**  Sector Group management  **/
+ ---------------------------------
+	
+	
+	
 	 -------------------------
 	/**  User management  **/
  -------------------------

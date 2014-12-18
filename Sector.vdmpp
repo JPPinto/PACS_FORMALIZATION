@@ -3,15 +3,11 @@ types
 	public SectorID = seq1 of char;
 	
 instance variables
-	-- Used Sector IDs
-	public static usedIDs: set of SectorID := {};
 	
 	-- This sector's id
-	private id: SectorID;
-	-- The overall facility this sector belongs to
-	private facility : Facility;
+	public id: SectorID;
 	-- The sector this one is inserted into, if appliable
-	private parent : [Sector] := nil;
+	public parent : [Sector] := nil;
 	
 	inv ancestryIsConsistent();
 	
@@ -19,38 +15,27 @@ instance variables
 operations
 
 	-- Constructor that specifies a parent sector
-	public Sector(sectorID: SectorID, sectorFacility: Facility, parentSector: Sector) sector:Sector == (
+	public Sector(sectorID: SectorID, parentSector: Sector) sector:Sector == (
 		id := sectorID;
-		facility := sectorFacility;
 		parent := parentSector;
-		usedIDs := usedIDs union {sectorID};
 		return self
 	)
-	pre sectorID not in set usedIDs
-		and sectorID <> ""
+	pre sectorID <> ""
 		and parentSector.id <> sectorID
-	post sectorID in set Sector`usedIDs
-		and self <> parentSector;
+	post self <> parentSector;
 	
 	-- Constructs a parent-less sector
-	public Sector(sectorID: SectorID, sectorFacility: Facility) sector:Sector == (
+	public Sector(sectorID: SectorID) sector:Sector == (
 		id := sectorID;
-		facility := sectorFacility;
-		usedIDs := usedIDs union {sectorID};
 		return self
 	)
-	pre sectorID not in set Sector`usedIDs
-		and sectorID <> ""
-	post sectorID in set usedIDs;
+	pre sectorID <> "";
 	
 	public getID: () ==> SectorID
 	getID() == return id;
 	
 	public getParent: () ==> Sector
 	getParent() == return parent;
-	
-	public getFacility: () ==> Facility
-	getFacility() == return facility;
 	
 	-- Returns all ancestor sectors (parent of parent of parent...)
 	public getAncestors: () ==> set of Sector
