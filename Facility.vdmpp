@@ -413,12 +413,12 @@ operations
  -----------------------------------
  
  	-- Register a new access rule given a concerned sector or sector group and access card, a start date and, optionally, an expiration date
- 	public registerAccessRule: bool * nat * seq1 of char * AccessRule`Permission * nat1 *  DateUtil`Date * [DateUtil`Date] ==> AccessRule
- 	registerAccessRule(useSectorGroup, cardID, sectorOrSectorGroupID, permission, priority, startDate, endDate) == (
+ 	public registerAccessRule: bool * nat * nat * seq1 of char * AccessRule`Permission * nat1 *  DateUtil`Date * [DateUtil`Date] ==> AccessRule
+ 	registerAccessRule(useSectorGroup, ruleID, cardID, sectorOrSectorGroupID, permission, priority, startDate, endDate) == (
  		if useSectorGroup then (
 	 		dcl accessCard: Card := getAccessCardByID(cardID);
 	 		dcl sector: Sector := getSectorByID(sectorOrSectorGroupID);
-	 		dcl newRule: AccessRule := new AccessRule(sector, accessCard, permission, priority, startDate, endDate);
+	 		dcl newRule: AccessRule := new AccessRule(ruleID, sector, accessCard, permission, priority, startDate, endDate);
 	 		
 	 		facilityAccessRules := facilityAccessRules union {newRule};
  		
@@ -427,21 +427,23 @@ operations
  		else (
  			dcl accessCard: Card := getAccessCardByID(cardID);
  			dcl sectorGroup: SectorGroup := getSectorGroupByName(sectorOrSectorGroupID);
-	 		dcl newRule: AccessRule := new AccessRule(sectorGroup, accessCard, permission, priority, startDate, endDate);
+	 		dcl newRule: AccessRule := new AccessRule(ruleID, sectorGroup, accessCard, permission, priority, startDate, endDate);
 	 		
 	 		facilityAccessRules := facilityAccessRules union {newRule};
 	 		
 	 		return newRule;
  		)
- 	);
+ 	)
+ 	pre not exists rule in set facilityAccessRules & rule.id = ruleID
+ 	post exists1 rule in set facilityAccessRules & rule.id = ruleID;
  	
  	-- Register a new access rule given a concerned sector or sector group and access card group, a start date and, optionally, an expiration date
- 	public registerAccessRule: bool * CardGroup`CardGroupName * seq1 of char * AccessRule`Permission * nat1 *  DateUtil`Date * [DateUtil`Date] ==> AccessRule
- 	registerAccessRule(useSectorGroup, cardGroupName, sectorOrSectorGroupID, permission, priority, startDate, endDate) == (
+ 	public registerAccessRule: bool * nat * CardGroup`CardGroupName * seq1 of char * AccessRule`Permission * nat1 *  DateUtil`Date * [DateUtil`Date] ==> AccessRule
+ 	registerAccessRule(useSectorGroup, ruleID, cardGroupName, sectorOrSectorGroupID, permission, priority, startDate, endDate) == (
  		if useSectorGroup then (
 	 		dcl cardGroup: CardGroup := getCardGroupByName(cardGroupName);
 	 		dcl sector: Sector := getSectorByID(sectorOrSectorGroupID);
-	 		dcl newRule: AccessRule := new AccessRule(sector, cardGroup, permission, priority, startDate, endDate);
+	 		dcl newRule: AccessRule := new AccessRule(ruleID, sector, cardGroup, permission, priority, startDate, endDate);
 	 		
 	 		facilityAccessRules := facilityAccessRules union {newRule};
  		
@@ -450,13 +452,20 @@ operations
  		else (
  			dcl cardGroup: CardGroup := getCardGroupByName(cardGroupName);
  			dcl sectorGroup: SectorGroup := getSectorGroupByName(sectorOrSectorGroupID);
-	 		dcl newRule: AccessRule := new AccessRule(sectorGroup, cardGroup, permission, priority, startDate, endDate);
+	 		dcl newRule: AccessRule := new AccessRule(ruleID, sectorGroup, cardGroup, permission, priority, startDate, endDate);
 	 		
 	 		facilityAccessRules := facilityAccessRules union {newRule};
 	 		
 	 		return newRule;
  		)
- 	);
+ 	)
+ 	pre not exists rule in set facilityAccessRules & rule.id = ruleID
+ 	post exists1 rule in set facilityAccessRules & rule.id = ruleID;
+ 	
+ 	-- Returns the rule with the given id
+ 	public getAccessRuleByID: nat ==> AccessRule
+ 	getAccessRuleByID(ruleID) == return iota rule in set facilityAccessRules & rule.id = ruleID
+ 	pre exists1 rule in set facilityAccessRules & rule.id = ruleID;
 	
 	-- Returns all rules that have influence in a given sector, for a given access card. not expired at time of given date
 	public getValidRelatedRules: Card * Sector * DateUtil`Date ==> set of AccessRule

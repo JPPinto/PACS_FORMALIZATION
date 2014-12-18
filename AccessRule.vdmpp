@@ -16,6 +16,7 @@ values
 	public static HIGH: nat1 = 3;
 	
 instance variables
+	public id: nat;
 	public sectorGroup: [SectorGroup];
 	public sector: [Sector];
 	public cardGroup: [CardGroup];
@@ -35,8 +36,9 @@ instance variables
 operations
 
 	-- Create an access rule given an access card and a sector
-	public AccessRule: Sector * Card * Permission * nat1 * DateUtil`Date * [DateUtil`Date] ==> AccessRule
-	AccessRule(relatedSector, relatedAccessCard, accessPermission, rulePriority, ruleStartDate, ruleEndDate) == (
+	public AccessRule: nat * Sector * Card * Permission * nat1 * DateUtil`Date * [DateUtil`Date] ==> AccessRule
+	AccessRule(ruleID, relatedSector, relatedAccessCard, accessPermission, rulePriority, ruleStartDate, ruleEndDate) == (
+		id := ruleID;
 		sectorGroup := nil;
 		sector := relatedSector;
 		cardGroup := nil;
@@ -53,8 +55,9 @@ operations
 		and rulePriority in set {LOW, MID, HIGH};
 		
 	-- Create an access rule given an access card and a sector group
-	public AccessRule: SectorGroup * Card * Permission * nat1 * DateUtil`Date * [DateUtil`Date] ==> AccessRule
-	AccessRule(relatedSectorGroup, relatedAccessCard, accessPermission, rulePriority, ruleStartDate, ruleEndDate) == (
+	public AccessRule: nat * SectorGroup * Card * Permission * nat1 * DateUtil`Date * [DateUtil`Date] ==> AccessRule
+	AccessRule(ruleID, relatedSectorGroup, relatedAccessCard, accessPermission, rulePriority, ruleStartDate, ruleEndDate) == (
+		id := ruleID;
 		sectorGroup := relatedSectorGroup;
 		sector := nil;
 		cardGroup := nil;
@@ -71,8 +74,9 @@ operations
 		and rulePriority in set {LOW, MID, HIGH};
 		
 	-- Create an access rule given a card group and a sector
-	public AccessRule: Sector * CardGroup * Permission * nat1 * DateUtil`Date * [DateUtil`Date] ==> AccessRule
-	AccessRule(relatedSector, relatedCardGroup, accessPermission, rulePriority, ruleStartDate, ruleEndDate) == (
+	public AccessRule: nat * Sector * CardGroup * Permission * nat1 * DateUtil`Date * [DateUtil`Date] ==> AccessRule
+	AccessRule(ruleID, relatedSector, relatedCardGroup, accessPermission, rulePriority, ruleStartDate, ruleEndDate) == (
+		id := ruleID;
 		sectorGroup := nil;
 		sector := relatedSector;
 		cardGroup := relatedCardGroup;
@@ -89,8 +93,9 @@ operations
 		and rulePriority in set {LOW, MID, HIGH};
 		
 	-- Create an access rule given a card group and a sector group
-	public AccessRule: SectorGroup * CardGroup * Permission * nat1 * DateUtil`Date * [DateUtil`Date] ==> AccessRule
-	AccessRule(relatedSectorGroup, relatedCardGroup, accessPermission, rulePriority, ruleStartDate, ruleEndDate) == (
+	public AccessRule: nat * SectorGroup * CardGroup * Permission * nat1 * DateUtil`Date * [DateUtil`Date] ==> AccessRule
+	AccessRule(ruleID, relatedSectorGroup, relatedCardGroup, accessPermission, rulePriority, ruleStartDate, ruleEndDate) == (
+		id := ruleID;
 		sectorGroup := relatedSectorGroup;
 		sector := nil;
 		cardGroup := relatedCardGroup;
