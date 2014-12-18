@@ -3,8 +3,8 @@ types
 	public SectorGroupName = seq1 of char;
 		
 instance variables
-	private sectors : set of Sector;
-	private groupName : SectorGroupName;
+	public sectors : set of Sector;
+	public groupName : SectorGroupName;
 	
 	inv (card sectors) > 0;
 	inv groupName <> "";

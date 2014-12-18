@@ -106,7 +106,78 @@ operations
 	/**  Sector Group management  **/
  ---------------------------------
 	
-	
+ -- Register a new sector group
+ -- There cannot exist two sector groups with the same name
+ public registerSectorGroup: SectorGroup`SectorGroupName * set of Sector ==> SectorGroup
+ registerSectorGroup(groupName, memberSectors) == (
+ 		dcl newSectorGroup: SectorGroup := new SectorGroup(groupName, memberSectors);
+ 		sectorGroups := sectorGroups union {newSectorGroup};
+ 		
+ 		return newSectorGroup;
+ )
+ pre groupName <> ""
+ 	and not exists sectorGroup in set sectorGroups & sectorGroup.groupName = groupName
+ post exists1 sectorGroup in set sectorGroups & sectorGroup.groupName = groupName;
+ 
+ -- Removes a sector group from the system, given its name and returns the removed group
+	public removeSectorGroup: SectorGroup`SectorGroupName ==> SectorGroup
+	removeSectorGroup(groupName) == (
+		dcl group: SectorGroup := iota g in set sectorGroups & g.groupName = groupName;
+		sectorGroups := sectorGroups \ {group};
+		return group;
+	)
+	pre exists g in set sectorGroups & g.groupName = groupName
+	post RESULT not in set sectorGroups;
+ 
+ -- Removes a sector from a group, given a sector id and a group name
+ -- The given group must contain the sector, and if the group would be left empty, it must be removed
+ public removeSectorFromGroup: Sector`SectorID * SectorGroup`SectorGroupName ==> ()
+ removeSectorFromGroup(sectorID, groupName) == (
+	dcl sectorGroup: SectorGroup := iota g in set sectorGroups & g.groupName = groupName;
+	dcl sector: Sector := getSectorByID(sectorID);
+	if(card sectorGroup.sectors > 1) then sectorGroup.removeSector(sector)
+ 	else (
+ 		dcl removedSectorGroup: SectorGroup := removeSectorGroup(groupName);
+ 		return;
+ 	);
+ 	return;
+ )
+ pre (exists g in set sectorGroups & (g.groupName = groupName and exists s in set g.sectors & s.id = sectorID))
+ post not exists g in set sectorGroups & (g.groupName = groupName and exists s in set g.sectors & s.id = sectorID);
+ 
+ -- Removes a card from a group, given a card and a group
+ -- The given group must contain the card, and if the group would be left empty, it must be removed
+ public removeSectorFromGroup: Sector * SectorGroup ==> ()
+ removeSectorFromGroup(sector, sectorGroup) == (
+ 	if(card sectorGroup.sectors > 1) then sectorGroup.removeSector(sector)
+ 	else (
+ 		dcl removedSectorGroup: SectorGroup := removeSectorGroup(sectorGroup.groupName);
+ 		return;
+ 	);
+ 	return;
+ )
+ pre sector in set sectorGroup.sectors
+ post (sector not in set sectorGroup.sectors) or (sectorGroup not in set sectorGroups);
+ 
+  -- Removes a sector from all groups.
+ public removeSectorFromAllGroups: Sector ==> ()
+ removeSectorFromAllGroups(sector) == (
+ 	for all sectorGroup in set sectorGroups do (
+ 		if sectorGroup.containsSector(sector) then removeSectorFromGroup(sector, sectorGroup);
+ 	);
+ )
+ pre exists sectorGroup in set sectorGroups & (sector in set sectorGroup.sectors)
+ post not exists sectorGroup in set sectorGroups & (sector in set sectorGroup.sectors);
+ 
+ -- Adds a sector to a group, given the sector id and the group name
+ public addSectorToGroup: Sector`SectorID * SectorGroup`SectorGroupName ==> ()
+ addSectorToGroup(sectorID, sectorGroupName) == (
+ 	dcl sectorGroup: SectorGroup := iota g in set sectorGroups & g.groupName = sectorGroupName;
+ 	dcl sector: Sector := getSectorByID(sectorID);
+ 	sectorGroup.addSector(sector);
+ )
+ pre not exists group in set sectorGroups & (group.groupName = sectorGroupName and exists sector in set group.sectors & sector.id = sectorID)
+ post exists1 group in set sectorGroups & (group.groupName = sectorGroupName and exists1 sector in set group.sectors & sector.id = sectorID);
 	
 	 -------------------------
 	/**  User management  **/
