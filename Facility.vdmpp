@@ -44,6 +44,26 @@ instance variables
 	inv forall accessCard in set facilityAccessCards &
 			(not exists otherAccessCard in set facilityAccessCards &
 				(accessCard <> otherAccessCard and accessCard.getID() = otherAccessCard.getID()));
+				
+	-- Checks if there are no two card groups with the same group name
+	inv forall cardGroup in set cardGroups &
+			(not exists otherCardGroup in set cardGroups &
+				(cardGroup <> otherCardGroup and cardGroup.getGroupName() = otherCardGroup.getGroupName()));
+				
+	-- Checks if there are no two sectors with the same id
+	inv forall sector in set sectors &
+		(not exists otherSector in set sectors &
+			(sector <> otherSector and sector.getID() = otherSector.getID()));
+				
+	-- Checks if there are no two sector groups with the same group name
+	inv forall sectorGroup in set sectorGroups &
+			(not exists otherSectorGroup in set sectorGroups &
+				(sectorGroup <> otherSectorGroup and sectorGroup.getGroupName() = otherSectorGroup.getGroupName()));
+				
+	-- Checks if there are no two rules with the same id
+	inv forall accessRule in set facilityAccessRules &
+			(not exists otherAccessRule in set facilityAccessRules &
+				(accessRule <> otherAccessRule and accessRule.id = otherAccessRule.id));
 	
 	
 operations
