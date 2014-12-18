@@ -88,24 +88,35 @@ class AccessPoliciesTest
 			
 			dcl normalCardsToCreate: set of nat := {5, 6, 7, 8, 9};
 			
+			dcl cardsThatWillBeDeleted: set of nat := {10};
+			
+			-- Register cards with a predefined expiration date
 			dcl createdExpirableCards: set of Card := configureCardsScenario(facility, expirableCardsToCreate);
 			
+			-- Register cards without expiration date
 			dcl createdNormalCards: set of Card := configureCardsScenario(facility, normalCardsToCreate);
+			
+			-- Register cards for future removal
+			dcl cardsToRemove: set of Card := configureCardsScenario(facility, cardsThatWillBeDeleted);
 			
 			dcl cardGroupsToCreate: map CardGroup`CardGroupName to set of Card := {
 				"staff" |-> createdNormalCards,
-				"students" |-> createdExpirableCards
+				"students" |-> createdExpirableCards,
+				"etc" |-> cardsToRemove
 			};
 			
+			-- Register sector groups
 			dcl staffCardGroup: set of CardGroup := configureCardGroupsScenario(facility, cardGroupsToCreate);
 			
 			assertEqual(card createdExpirableCards, card dom expirableCardsToCreate);
 			assertEqual(card createdNormalCards, card normalCardsToCreate);
 			
-			cardRemoveScenario(facility, 8);
-			cardRemoveScenario(facility, 9);
-			
 			assertTrue(staffCardGroup subset facility.cardGroups);
+			
+			-- Remove a card. This should also remove the "etc" group, since it was the only card present
+			cardRemoveScenario(facility, 10);
+			assertTrue(not exists accessCard in set facility.facilityAccessCards & accessCard.id = 10);
+			assertTrue(not exists group in set facility.cardGroups & group.groupName = "etc");
 		);
 			
 		public static testAll: () ==> ()
