@@ -88,8 +88,19 @@ operations
  pre exists1 s in set sectors & s.id = sectorID;
  
  -- Remove a sector by ID
+ -- Must remove any children sectors
  -- TODO: Must remove sector from the corresponding sector group and policy
- 
+ public removeSectorByID: Sector`SectorID ==> ()
+ removeSectorByID(sectorID) == (
+ 	dcl removedSector: Sector := getSectorByID(sectorID);
+ 	sectors := sectors \ {removedSector};
+ 	-- Delete children as well
+ 	for all sector in set sectors do (
+ 		if(sector.parent <> nil and sector.parent.id = sectorID) then removeSectorByID(sector.id);
+ 	);
+ )
+ pre exists1 sector in set sectors & sector.id = sectorID
+ post not exists sector in set sectors & sector.id = sectorID;
  
 	 --------------------------------
 	/**  Sector Group management  **/
