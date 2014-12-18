@@ -94,14 +94,37 @@ class AccessPoliciesTest
 			facility.addCardToGroup(cardID, cardGroupName);
 		);
 		
-		-- Configure users scenario
+		-- Configure users scenario with given cards
+		public configureUsersScenario: Facility * map User`UserName to (nat * Card) ==> set of User
+		configureUsersScenario(facility, usersToCreateWithCard) == (
+			dcl createdUsers: set of User := {};
+			for all userName in set dom usersToCreateWithCard do (
+				dcl newUser: User := facility.registerUser(userName, usersToCreateWithCard(userName).#1, usersToCreateWithCard(userName).#2);
+				createdUsers := createdUsers union {newUser};
+			);
+			
+			return createdUsers;
+		)
+		post RESULT subset facility.users and card RESULT = card dom usersToCreateWithCard;
+		
+		-- Configure users scenario where no card is given
+		public configureUsersScenario: Facility * set of (User`UserName * nat) ==> set of User
+		configureUsersScenario(facility, usersToCreate) == (
+			dcl createdUsers: set of User := {};
+			for all user in set usersToCreate do (
+				dcl newUser: User := facility.registerUser(user.#1, user.#2);
+				createdUsers := createdUsers union {newUser};
+			);
+			
+			return createdUsers;
+		)
+		post RESULT subset facility.users and card RESULT = card usersToCreate;
 		
 		-- Configure sectors scenario
 		
 		-- Configure sector groups scenario
 		
 		-- Ask for access scenario
-		
 		
 		public testSuccessfulConfiguration: Facility ==> ()
 		testSuccessfulConfiguration(facility) == (
@@ -143,9 +166,62 @@ class AccessPoliciesTest
 			-- Register card groups
 			dcl staffCardGroup: set of CardGroup := configureCardGroupsScenario(facility, cardGroupsToCreate);
 			
+			-- Register cards to use with users
+			dcl staffCard1: Card := facility.registerCard(13);
+			dcl staffCard2: Card := facility.registerCard(14);
+			dcl staffCard3: Card := facility.registerCard(15);
+			
+			dcl studentCard1: Card := facility.registerCard(mk_DateUtil`Date(2014, 12, 18, 23, 55), 16);
+			dcl studentCard2: Card := facility.registerCard(mk_DateUtil`Date(2014, 12, 19, 23, 55), 17);
+			dcl studentCard3: Card := facility.registerCard(mk_DateUtil`Date(2014, 12, 10, 23, 55), 18);
+			
+			dcl staffUsersToCreate: map User`UserName to (nat * Card) := { "staff1" |-> mk_(0, staffCard1),
+				"staff2" |-> mk_(1, staffCard2),
+				"staff3" |-> mk_(2, staffCard3) };
+				
+			dcl studentUsersToCreate: set of (User`UserName * nat) := { mk_("student1", 3), mk_("student2", 4), mk_("student3", 5)};
+			
 			-- Assert that the right number of cards were created
 			assertEqual(card createdExpirableCards, card dom expirableCardsToCreate);
 			assertEqual(card createdNormalCards, card normalCardsToCreate);
+			
+			-- Register staff users (with unexpirable cards)
+			let staffUsers = configureUsersScenario(facility, staffUsersToCreate)
+				in assertTrue(staffUsers subset facility.users);
+				
+			-- Register student users (without cards) and add cards later
+			let studentUsers = configureUsersScenario(facility, studentUsersToCreate) in (
+				dcl studentCardSequence: seq of Card := [studentCard1, studentCard2, studentCard3];
+				assertTrue(studentUsers subset facility.users);
+				
+				-- Allocate cards to users
+				for all student in set studentUsers do (
+					facility.allocateCard(student, hd studentCardSequence);
+					studentCardSequence := tl studentCardSequence;
+				);
+				
+				-- Remove a card belonging to one of the users
+				facility.removeCard(studentCard1);
+				assertTrue(not exists user in set facility.users & user.accessCard = studentCard1);
+				
+				-- Remove exchange cards between two users
+				let student2 = facility.getUserWithCard(17),
+						student3 = facility.getUserWithCard(18) in (
+						student3.removeAccessCard();
+						facility.allocateCard(student2.id, 18);
+						facility.allocateCard(student3.id, 17);
+						
+						assertTrue(student2.accessCard = studentCard3);
+						assertTrue(student3.accessCard = studentCard2);
+				);
+				
+				-- Create two users and remove them
+				let userToRemove1 = facility.registerUser("removeMe1", 6),
+					userToRemove2 = facility.registerUser("removeMe2", 7) in (
+					facility.removeUser(userToRemove1);
+					facility.removeUser(userToRemove2.id);
+				);
+			);
 			
 			-- Assert that the card groups were created and belong in the facility's card group sector
 			assertTrue(staffCardGroup subset facility.cardGroups); 
@@ -175,7 +251,6 @@ class AccessPoliciesTest
 			
 			-- Manually add a card to a group
 			addCardToCardGroupScenario(facility, "staff", 12);
-			
 		);
 		
 		-- Entry point to run tests

@@ -161,7 +161,7 @@ operations
 		dcl user: User := iota u in set users & u.id = userID;
 		user.setAcessCard(accessCard);
 	)
-	pre not exists u in set users & (u.id = userID and u.accessCard.id = accessCardID)
+	pre not exists u in set users & (u.id = userID and u.accessCard <> nil and u.accessCard.id = accessCardID)
 	post exists1 u in set users & (u.id = userID and u.accessCard.id = accessCardID);
 	
 	-- Returns the user with a given card
@@ -169,7 +169,7 @@ operations
 	getUserWithCard(accessCard) == (
 		return iota user in set users & user.accessCard = accessCard;
 	)
-	pre exists u in set users & u.accessCard = accessCard;
+	pre exists u in set users & (u.accessCard <> nil and u.accessCard = accessCard);
 	
 	-- Returns the user with a card with a matching id
 	public getUserWithCard: nat ==> User
@@ -177,7 +177,7 @@ operations
 		dcl accessCard: Card := iota c in set facilityAccessCards & c.id = accessCardID;
 		return getUserWithCard(accessCard);
 	)
-	pre exists u in set users & (u.accessCard.id = accessCardID);
+	pre exists u in set users & (u.accessCard <> nil and u.accessCard.id = accessCardID);
 	
 	 -----------------------------
 	/** Card group management **/
