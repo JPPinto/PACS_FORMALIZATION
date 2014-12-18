@@ -252,6 +252,16 @@ operations
  	);
  );
  
+ -- Adds a card to a group, given the card id and the group name
+ public addCardToGroup: nat * CardGroup`CardGroupName ==> ()
+ addCardToGroup(cardID, cardGroupName) == (
+ 	dcl cardGroup: CardGroup := iota g in set cardGroups & g.groupName = cardGroupName;
+ 	dcl accessCard: Card := iota c in set facilityAccessCards & c.id = cardID;
+ 	cardGroup.addCard(accessCard);
+ )
+ pre not exists group in set cardGroups & (group.groupName = cardGroupName and exists accessCard in set group.accessCards & accessCard.id = cardID)
+ post exists1 group in set cardGroups & (group.groupName = cardGroupName and exists1 accessCard in set group.accessCards & accessCard.id = cardID);
+ 
 	 ----------------------------------
 	/** Access rules and requesting **/
  -----------------------------------

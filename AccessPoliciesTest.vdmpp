@@ -88,6 +88,12 @@ class AccessPoliciesTest
 			);
 		);
 		
+		-- Card addition to card group scenario (given a card id and a card group name)
+		public addCardToCardGroupScenario: Facility * CardGroup`CardGroupName * nat ==> ()
+		addCardToCardGroupScenario(facility, cardGroupName, cardID) == (
+			facility.addCardToGroup(cardID, cardGroupName);
+		);
+		
 		-- Configure users scenario
 		
 		-- Configure sectors scenario
@@ -166,6 +172,10 @@ class AccessPoliciesTest
 			cardRemoveScenario(facility, 10);
 			assertTrue(not exists accessCard in set facility.facilityAccessCards & accessCard.id = 10);
 			assertTrue(not exists group in set facility.cardGroups & group.groupName = "removalByCardDeletion");
+			
+			-- Manually add a card to a group
+			addCardToCardGroupScenario(facility, "staff", 12);
+			
 		);
 		
 		-- Entry point to run tests
