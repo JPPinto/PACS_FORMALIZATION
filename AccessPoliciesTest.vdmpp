@@ -169,8 +169,8 @@ class AccessPoliciesTest
 		-- Ask for access scenario
 		-- TODO
 		
-		public testSuccessfulConfiguration: Facility ==> ()
-		testSuccessfulConfiguration(facility) == (
+		public testSuccessfulAccessCardAndUserConfiguration: Facility ==> ()
+		testSuccessfulAccessCardAndUserConfiguration(facility) == (
 			dcl expirableCardsToCreate: map nat to DateUtil`Date := {
 				0 |-> mk_DateUtil`Date(2014, 12, 18, 23, 55),
 				1 |-> mk_DateUtil`Date(2014, 12, 17, 23, 55),
@@ -297,7 +297,10 @@ class AccessPoliciesTest
 			
 			-- Manually add a card to a group
 			addCardToCardGroupScenario(facility, "staff", 12);
-			
+		);
+		
+		public testSuccessfulSectorConfiguration: Facility ==> ()
+		testSuccessfulSectorConfiguration(facility) == (
 			-- Create a few parent/main sectors
 			let mainSectors = configureSectorsScenario(facility, {"classBuilding", "auditorium", "secretariate", "boardRoom", "garage"}) in (
 				assertTrue(mainSectors subset facility.sectors);
@@ -390,7 +393,8 @@ class AccessPoliciesTest
 		testAll() == (
 			dcl school : Facility := new Facility("school");
 			dcl test: AccessPoliciesTest := new AccessPoliciesTest();
-			test.testSuccessfulConfiguration(school);
+			test.testSuccessfulSectorConfiguration(school);
+			test.testSuccessfulAccessCardAndUserConfiguration(school);
 		);
 		
 		-- This test breaks the no two cards with same id safety requirement
