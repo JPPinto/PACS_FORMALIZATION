@@ -29,6 +29,8 @@ instance variables
 	
 	public name: FacilityName;
 	
+	inv name <> "";
+	
 	-- Checks if there are no two users with the same card
 	inv forall user in set users &
 			(not exists user2 in set users &
@@ -51,7 +53,12 @@ operations
 		name := facilityName;
 		
 		return self
-	);
+	)
+	pre facilityName <> "";
+	
+	 -------------------------
+	/**  User management  **/
+ -------------------------
 	
 	-- Registers a user in the system, provided an access card
 	public registerUser: User`UserName * nat * Card ==> User
@@ -91,6 +98,10 @@ operations
 	pre user in set users
 	post user not in set users;
 	
+	 ----------------------
+	/** Card management **/
+ -----------------------
+	
 	-- Registers a card in the system with a given expiration date
 	public registerCard: DateUtil`Date * nat ==> Card
 	registerCard(doe, id) == (
@@ -115,7 +126,14 @@ operations
 	
 	-- Removes a given card from the facility, removing it from the user that may have it and any card groups it belongs to
 	public removeCard: Card ==> ()
-	removeCard(accessCard) == facilityAccessCards := facilityAccessCards \ {accessCard}
+	removeCard(accessCard) == (
+		if (exists u in set users & (u.accessCard = accessCard)) then (
+			dcl user: User := getUserWithCard(accessCard);
+			user.removeAccessCard();
+		);
+		removeCardFromAllGroups(accessCard);
+		facilityAccessCards := facilityAccessCards \ {accessCard}
+	)
 	pre accessCard in set facilityAccessCards
 	post accessCard not in set facilityAccessCards;
 	
@@ -160,6 +178,72 @@ operations
 		return getUserWithCard(accessCard);
 	)
 	pre exists u in set users & (u.accessCard.id = accessCardID);
+	
+	 -----------------------------
+	/** Card group management **/
+ -----------------------------
+ 
+ -- Register a new card group
+ -- There cannot exist two card groups with the same name
+ public registerCardGroup: CardGroup`CardGroupName * set of Card ==> CardGroup
+ registerCardGroup(groupName, accessCards) == (
+ 		dcl newCardGroup: CardGroup := new CardGroup(groupName, accessCards);
+ 		cardGroups := cardGroups union {newCardGroup};
+ 		
+ 		return newCardGroup;
+ )
+ pre groupName <> ""
+ 	and not exists cardGroup in set cardGroups & cardGroup.groupName = groupName
+ post exists1 cardGroup in set cardGroups & cardGroup.groupName = groupName;
+ 
+ -- Removes a card group from the system, given its name
+	public removeCardGroup: CardGroup`CardGroupName ==> ()
+	removeCardGroup(groupName) == (
+		dcl group: CardGroup := iota g in set cardGroups & g.groupName = groupName;
+		removeCardGroup(group);
+	)
+	pre exists g in set cardGroups & g.groupName = groupName
+	post not exists g in set cardGroups & g.groupName = groupName;
+	
+	-- Removes a card group from the system
+	public removeCardGroup: CardGroup ==> ()
+	removeCardGroup(group) == cardGroups := cardGroups \ {group}
+	pre group in set cardGroups
+	post group not in set cardGroups;
+ 
+ -- Removes a card from a group, given a card id and a group name
+ -- The given group must contain the card, and if the group would be left empty, it must be removed
+ public removeCardFromGroup: nat * CardGroup`CardGroupName ==> ()
+ removeCardFromGroup(cardID, groupName) == (
+	dcl cardGroup: CardGroup := iota g in set cardGroups & g.groupName = groupName;
+	dcl accessCard: Card := iota c in set facilityAccessCards & c.id = cardID;
+	if(card cardGroup.accessCards > 1) then cardGroup.removeCard(accessCard)
+ 	else removeCardGroup(cardGroup);
+ )
+ pre (exists g in set cardGroups & (g.groupName = groupName and exists c in set g.accessCards & c.id = cardID))
+ post not exists g in set cardGroups & (g.groupName = groupName and exists c in set g.accessCards & c.id = cardID);
+ 
+ -- Removes a card from a group, given a card and a group
+ -- The given group must contain the card, and if the group would be left empty, it must be removed
+ public removeCardFromGroup: Card * CardGroup ==> ()
+ removeCardFromGroup(accessCard, cardGroup) == (
+ 	if(card cardGroup.accessCards > 1) then cardGroup.removeCard(accessCard)
+ 	else removeCardGroup(cardGroup);
+ )
+ pre accessCard in set cardGroup.accessCards
+ post (accessCard not in set cardGroup.accessCards) or (cardGroup not in set cardGroups);
+ 
+  -- Removes a card from all groups.
+ public removeCardFromAllGroups: Card ==> ()
+ removeCardFromAllGroups(accessCard) == (
+ 	for all cardGroup in set cardGroups do (
+ 		if cardGroup.containsCard(accessCard) then removeCardFromGroup(accessCard, cardGroup);
+ 	);
+ );
+ 
+	 ----------------------------------
+	/** Access rules and requesting **/
+ -----------------------------------
 	
 	-- Returns all rules that have influence in a given sector, for a given access card
 	public getRelatedRules: Card * Sector ==> set of AccessRule

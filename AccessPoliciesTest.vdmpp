@@ -48,8 +48,24 @@ class AccessPoliciesTest
 		)
 		post forall id in set cardsToCreate &
 			(exists1 accessCard in set facility.facilityAccessCards & accessCard.id = id);
+			
+		-- Card removal scenario
+		public cardRemoveScenario: Facility * nat ==> ()
+		cardRemoveScenario(facility, cardID) == facility.removeCard(cardID);
 		
 		-- Configure card groups scenario
+		public configureCardGroupsScenario: Facility * map CardGroup`CardGroupName to set of Card ==> set of CardGroup
+		configureCardGroupsScenario(facility, cardGroupsInfo) == (
+			dcl createdCardGroups: set of CardGroup := {};
+			for all cardGroupName in set dom cardGroupsInfo do (
+				dcl newCardGroup: CardGroup := facility.registerCardGroup(cardGroupName, cardGroupsInfo(cardGroupName));
+				createdCardGroups := createdCardGroups union {newCardGroup};
+			);
+			
+			return createdCardGroups;
+		)
+		post forall groupName in set dom cardGroupsInfo &
+			(exists1 cardGroup in set facility.cardGroups & cardGroup.groupName = groupName);
 		
 		-- Configure users scenario
 		
@@ -60,8 +76,8 @@ class AccessPoliciesTest
 		-- Ask for access scenario
 		
 		
-		public testSuccessfulCardConfiguration: Facility ==> ()
-		testSuccessfulCardConfiguration(facility) == (
+		public testSuccessfulConfiguration: Facility ==> ()
+		testSuccessfulConfiguration(facility) == (
 			dcl expirableCardsToCreate: map nat to DateUtil`Date := {
 				0 |-> mk_DateUtil`Date(2014, 12, 18, 23, 55),
 				1 |-> mk_DateUtil`Date(2014, 12, 17, 23, 55),
@@ -76,15 +92,27 @@ class AccessPoliciesTest
 			
 			dcl createdNormalCards: set of Card := configureCardsScenario(facility, normalCardsToCreate);
 			
+			dcl cardGroupsToCreate: map CardGroup`CardGroupName to set of Card := {
+				"staff" |-> createdNormalCards,
+				"students" |-> createdExpirableCards
+			};
+			
+			dcl staffCardGroup: set of CardGroup := configureCardGroupsScenario(facility, cardGroupsToCreate);
+			
 			assertEqual(card createdExpirableCards, card dom expirableCardsToCreate);
 			assertEqual(card createdNormalCards, card normalCardsToCreate);
+			
+			cardRemoveScenario(facility, 8);
+			cardRemoveScenario(facility, 9);
+			
+			assertTrue(staffCardGroup subset facility.cardGroups);
 		);
 			
 		public static testAll: () ==> ()
 		testAll() == (
 			dcl school : Facility := new Facility("school");
 			dcl test: AccessPoliciesTest := new AccessPoliciesTest();
-			test.testSuccessfulCardConfiguration(school);
+			test.testSuccessfulConfiguration(school);
 		);
 		
 		-- This test breaks the no two cards with same id safety requirement
