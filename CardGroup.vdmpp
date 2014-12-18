@@ -1,12 +1,10 @@
 class CardGroup
 types
 	public CardGroupName = seq1 of char;
-	
-values
--- TODO Define values here
+
 instance variables
-	private accessCards : set of Card;
-	private groupName : CardGroupName;
+	public accessCards : set of Card;
+	public groupName : CardGroupName;
 	
 	inv (card accessCards) > 0;
 	inv groupName <> "";
