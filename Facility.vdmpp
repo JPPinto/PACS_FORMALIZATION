@@ -228,6 +228,11 @@ operations
 	pre user in set users
 	post user not in set users;
 	
+	-- Returns a user matching the given id
+	public getUserByID: nat ==> User
+	getUserByID(userID) == return iota u in set users & u.getID() = userID
+	pre exists1 user in set users & user.id = userID;
+	
 	 ----------------------
 	/** Card management **/
  -----------------------
@@ -309,6 +314,11 @@ operations
 		return getUserWithCard(accessCard);
 	)
 	pre exists u in set users & (u.accessCard <> nil and u.accessCard.id = accessCardID);
+	
+	-- Returns the card matching the given id
+	public getAccessCardByID: nat ==> Card
+	getAccessCardByID(accessCardID) == return iota c in set facilityAccessCards & c.id = accessCardID
+	pre exists c in set facilityAccessCards & c.id = accessCardID;
 	
 	 -----------------------------
 	/** Card group management **/
@@ -393,9 +403,60 @@ operations
  pre not exists group in set cardGroups & (group.groupName = cardGroupName and exists accessCard in set group.accessCards & accessCard.id = cardID)
  post exists1 group in set cardGroups & (group.groupName = cardGroupName and exists1 accessCard in set group.accessCards & accessCard.id = cardID);
  
+ -- Returns a card group given its name
+ public getCardGroupByName: CardGroup`CardGroupName ==> CardGroup
+ getCardGroupByName(cardGroupName) == return iota g in set cardGroups & g.groupName = cardGroupName
+ pre exists g in set cardGroups & g.groupName = cardGroupName;
+ 
 	 ----------------------------------
 	/** Access rules and requesting **/
  -----------------------------------
+ 
+ 	-- Register a new access rule given a concerned sector or sector group and access card, a start date and, optionally, an expiration date
+ 	public registerAccessRule: bool * nat * seq1 of char * AccessRule`Permission * nat1 *  DateUtil`Date * [DateUtil`Date] ==> AccessRule
+ 	registerAccessRule(useSectorGroup, cardID, sectorOrSectorGroupID, permission, priority, startDate, endDate) == (
+ 		if useSectorGroup then (
+	 		dcl accessCard: Card := getAccessCardByID(cardID);
+	 		dcl sector: Sector := getSectorByID(sectorOrSectorGroupID);
+	 		dcl newRule: AccessRule := new AccessRule(sector, accessCard, permission, priority, startDate, endDate);
+	 		
+	 		facilityAccessRules := facilityAccessRules union {newRule};
+ 		
+ 			return newRule;
+ 		)
+ 		else (
+ 			dcl accessCard: Card := getAccessCardByID(cardID);
+ 			dcl sectorGroup: SectorGroup := getSectorGroupByName(sectorOrSectorGroupID);
+	 		dcl newRule: AccessRule := new AccessRule(sectorGroup, accessCard, permission, priority, startDate, endDate);
+	 		
+	 		facilityAccessRules := facilityAccessRules union {newRule};
+	 		
+	 		return newRule;
+ 		)
+ 	);
+ 	
+ 	-- Register a new access rule given a concerned sector or sector group and access card group, a start date and, optionally, an expiration date
+ 	public registerAccessRule: bool * CardGroup`CardGroupName * seq1 of char * AccessRule`Permission * nat1 *  DateUtil`Date * [DateUtil`Date] ==> AccessRule
+ 	registerAccessRule(useSectorGroup, cardGroupName, sectorOrSectorGroupID, permission, priority, startDate, endDate) == (
+ 		if useSectorGroup then (
+	 		dcl cardGroup: CardGroup := getCardGroupByName(cardGroupName);
+	 		dcl sector: Sector := getSectorByID(sectorOrSectorGroupID);
+	 		dcl newRule: AccessRule := new AccessRule(sector, cardGroup, permission, priority, startDate, endDate);
+	 		
+	 		facilityAccessRules := facilityAccessRules union {newRule};
+ 		
+ 			return newRule;
+ 		)
+ 		else (
+ 			dcl cardGroup: CardGroup := getCardGroupByName(cardGroupName);
+ 			dcl sectorGroup: SectorGroup := getSectorGroupByName(sectorOrSectorGroupID);
+	 		dcl newRule: AccessRule := new AccessRule(sectorGroup, cardGroup, permission, priority, startDate, endDate);
+	 		
+	 		facilityAccessRules := facilityAccessRules union {newRule};
+	 		
+	 		return newRule;
+ 		)
+ 	);
 	
 	-- Returns all rules that have influence in a given sector, for a given access card. not expired at time of given date
 	public getValidRelatedRules: Card * Sector * DateUtil`Date ==> set of AccessRule
@@ -423,7 +484,7 @@ operations
 		return mk_(finalResult, loggedRequest);
 	)
 	pre requester in set users
-		and sector in set sectors
+		and sector in set sectors;
 
 traces
 -- TODO Define Combinatorial Test Traces here
