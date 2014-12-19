@@ -500,11 +500,12 @@ operations
 	);
 	
 	-- Requests access given a requesting user, the sector access has been requested to, and the date of request
+	-- If the user's card is expired, result is automatically <DENY>
 	public requestAccess: User * Sector * DateUtil`Date ==> AccessRule`Permission * AccessRequest
 	requestAccess(requester, sector, requestDate) == (
 		dcl relatedRules: set of AccessRule := getValidRelatedRules(requester.getAccessCard(), sector, requestDate);
 		dcl highestPriorityRule: AccessRule := AccessRule`getHighestPriorityValidRuleFromSet(relatedRules, requestDate);
-		dcl finalResult: AccessRule`Permission := highestPriorityRule.getPermission();
+		dcl finalResult: AccessRule`Permission := if requester.getAccessCard().isExpired(requestDate) then <DENY> else highestPriorityRule.getPermission();
 		
 		dcl loggedRequest: AccessRequest :=
 			new AccessRequest(requester, requester.getAccessCard(), sector, highestPriorityRule, finalResult, requestDate);
