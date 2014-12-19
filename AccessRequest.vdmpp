@@ -2,17 +2,17 @@ class AccessRequest
 
 instance variables
 	-- Time stamp of when access was requested
-	private timestamp: DateUtil`Date;
+	public timestamp: DateUtil`Date;
 	-- The user performing the request
-	private requestingUser: User;
+	public requestingUser: User;
 	-- Card used for the resquest
-	private cardUsed: Card;
+	public cardUsed: Card;
 	-- Sector the user tried to access
-	private sector: Sector;
+	public sector: Sector;
 	-- Access rule used by the system to allow/deny the access
-	private accessRule: AccessRule;
+	public accessRule: AccessRule;
 	-- The result of this access request
-	private result: AccessRule`Permission;
+	public result: AccessRule`Permission;
 	
 operations
 
@@ -27,20 +27,5 @@ operations
 		
 		return self;
 	);
-	
-	public getRequester: () ==> User
-	getRequester() == return requestingUser;
-	
-	public getUsedCard: () ==> Card
-	getUsedCard() == return cardUsed;
-	
-	public getRelatedRule: () ==> AccessRule
-	getRelatedRule() == return accessRule;
-	
-	public getResult: () ==> AccessRule`Permission
-	getResult() == return result;
-	
-	public getAccessDate: () ==> DateUtil`Date
-	getAccessDate() == return timestamp;
 
 end AccessRequest
