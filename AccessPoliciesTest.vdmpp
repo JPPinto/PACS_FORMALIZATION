@@ -216,9 +216,9 @@ class AccessPoliciesTest
 			dcl staffCard2: Card := facility.registerCard(14);
 			dcl staffCard3: Card := facility.registerCard(15);
 			
-			dcl studentCard1: Card := facility.registerCard(mk_DateUtil`Date(2014, 12, 18, 23, 55), 16);
-			dcl studentCard2: Card := facility.registerCard(mk_DateUtil`Date(2014, 12, 19, 23, 55), 17);
-			dcl studentCard3: Card := facility.registerCard(mk_DateUtil`Date(2014, 12, 20, 23, 55), 18);
+			dcl studentCard1: Card := facility.registerCard(mk_DateUtil`Date(2014, 12, 22, 23, 55), 16);
+			dcl studentCard2: Card := facility.registerCard(mk_DateUtil`Date(2014, 12, 23, 23, 55), 17);
+			dcl studentCard3: Card := facility.registerCard(mk_DateUtil`Date(2014, 12, 24, 23, 55), 18);
 			
 			dcl staffUsersToCreate: map User`UserName to (nat * Card) := { "staff1" |-> mk_(0, staffCard1),
 				"staff2" |-> mk_(1, staffCard2),
@@ -409,21 +409,31 @@ class AccessPoliciesTest
 			
 			-- Create ACCESS CARD -> SECTOR rule: John Doe's card has access to laboratory 1
 			dcl johnDoe: User := facility.registerUser("johnDoe", 6, facility.registerCard(19));
-			dcl rule4: AccessRule := facility.registerAccessRule(false, 3, 19, "laboratory1", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 14, 23, 55), nil);
+			dcl rule4: AccessRule := facility.registerAccessRule(false, 3, johnDoe.accessCard.id, "laboratory1", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 14, 23, 55), nil);
 			
 			-- Create CARD GROUP -> SECTOR rule (temporary rule exception): Students are temporarily denied access to classroom 2
 			dcl rule5: AccessRule := facility.registerAccessRule(false, 4, "students", "classRoom2", <DENY>, 2, mk_DateUtil`Date(2014, 12, 14, 23, 55), mk_DateUtil`Date(2014, 12, 20, 23, 55));
 			
 			-- Create ACCESS CARD -> SECTOR GROUP rule: Government auditor's card has access to administrative areas
 			dcl auditor: User := facility.registerUser("auditor", 7, facility.registerCard(20));
-			dcl rule6: AccessRule := facility.registerAccessRule(true, 5, 20, "administrativeAreas", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 14, 23, 55), nil);
+			dcl rule6: AccessRule := facility.registerAccessRule(true, 5, auditor.accessCard.id, "administrativeAreas", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 14, 23, 55), nil);
 			
+			-- Create an arbitrary rule to be removed
+			dcl rule7: AccessRule := facility.registerAccessRule(true, 6, 20, "administrativeAreas", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 14, 23, 55), nil);
+			
+			-- Check all rules are there
 			assertTrue(rule1 in set facility.facilityAccessRules);
 			assertTrue(rule2 in set facility.facilityAccessRules);
 			assertTrue(rule3 in set facility.facilityAccessRules);
 			assertTrue(rule4 in set facility.facilityAccessRules);
 			assertTrue(rule5 in set facility.facilityAccessRules);
 			assertTrue(rule6 in set facility.facilityAccessRules);
+			assertTrue(rule7 in set facility.facilityAccessRules);
+			
+			-- Remove a rule
+			let removedRule = facility.removeAccessRule(rule7.id) in
+				-- Check removed rule isn't anymore
+				assertTrue(removedRule not in set facility.facilityAccessRules);
 			
 			-- Test staff access request to secretariate (should be allowed)
 			let result = facility.requestAccess(facility.getUserByID(0), facility.getSectorByID("secretariate"), mk_DateUtil`Date(2014, 12, 15, 23, 55)) in ( 
@@ -478,16 +488,56 @@ class AccessPoliciesTest
 			);
 			
 			-- Test student access to classroom 2 (should be denied)
-			-- Verify if logging is correct
+			let result = facility.requestAccess(facility.getUserByID(4), facility.getSectorByID("classRoom2"), mk_DateUtil`Date(2014, 12, 15, 23, 55)) in ( 
+				assertTrue(result.#1 = <DENY>);
+				-- Verify if logging is correct
+				assertTrue(result.#2.timestamp = mk_DateUtil`Date(2014, 12, 15, 23, 55));
+				assertTrue(result.#2.requestingUser = facility.getUserByID(4));
+				assertTrue(result.#2.cardUsed = facility.getUserByID(4).accessCard);
+				assertTrue(result.#2.sector = facility.getSectorByID("classRoom2"));
+				assertTrue(result.#2.accessRule = rule5);
+				assertTrue(result.#2.result = <DENY>);
+				assertTrue(result.#2 in set facility.accessLog);
+			);
 			
 			-- Test student access to classroom 2 after rule date of expiration (should be allowed)
-			-- Verify if logging is correct
+			let result = facility.requestAccess(facility.getUserByID(4), facility.getSectorByID("classRoom2"), mk_DateUtil`Date(2014, 12, 21, 23, 55)) in ( 
+				assertTrue(result.#1 = <ALLOW>);
+				-- Verify if logging is correct
+				assertTrue(result.#2.timestamp = mk_DateUtil`Date(2014, 12, 21, 23, 55));
+				assertTrue(result.#2.requestingUser = facility.getUserByID(4));
+				assertTrue(result.#2.cardUsed = facility.getUserByID(4).accessCard);
+				assertTrue(result.#2.sector = facility.getSectorByID("classRoom2"));
+				assertTrue(result.#2.accessRule = rule1);
+				assertTrue(result.#2.result = <ALLOW>);
+				assertTrue(result.#2 in set facility.accessLog);
+			);
 			
 			-- Test student access to classroom 1 after card expiration (should be denied)
-			-- Verify if logging is correct
+			let result = facility.requestAccess(facility.getUserByID(4), facility.getSectorByID("classRoom1"), mk_DateUtil`Date(2014, 12, 31, 23, 55)) in ( 
+				assertTrue(result.#1 = <DENY>);
+				-- Verify if logging is correct
+				assertTrue(result.#2.timestamp = mk_DateUtil`Date(2014, 12, 31, 23, 55));
+				assertTrue(result.#2.requestingUser = facility.getUserByID(4));
+				assertTrue(result.#2.cardUsed = facility.getUserByID(4).accessCard);
+				assertTrue(result.#2.sector = facility.getSectorByID("classRoom1"));
+				assertTrue(result.#2.accessRule = rule1);
+				assertTrue(result.#2.result = <DENY>);
+				assertTrue(result.#2 in set facility.accessLog);
+			);
 			
-			-- Test auditor's access to boardRoom (should be allowed)
-			-- Verify if logging is correct
+			-- Test auditor's access to secretariate (should be allowed)
+			let result = facility.requestAccess(facility.getUserByID(7), facility.getSectorByID("secretariate"), mk_DateUtil`Date(2014, 12, 15, 23, 55)) in ( 
+				assertTrue(result.#1 = <ALLOW>);
+				-- Verify if logging is correct
+				assertTrue(result.#2.timestamp = mk_DateUtil`Date(2014, 12, 15, 23, 55));
+				assertTrue(result.#2.requestingUser = facility.getUserByID(7));
+				assertTrue(result.#2.cardUsed = facility.getUserByID(7).accessCard);
+				assertTrue(result.#2.sector = facility.getSectorByID("secretariate"));
+				assertTrue(result.#2.accessRule = rule6);
+				assertTrue(result.#2.result = <ALLOW>);
+				assertTrue(result.#2 in set facility.accessLog);
+			);
 			
 		);
 		

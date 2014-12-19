@@ -487,6 +487,17 @@ operations
  	public getAccessRuleByID: nat ==> AccessRule
  	getAccessRuleByID(ruleID) == return iota rule in set facilityAccessRules & rule.id = ruleID
  	pre exists1 rule in set facilityAccessRules & rule.id = ruleID;
+ 	
+ 	-- Removes an access rule, given its id, and returns it
+ 	public removeAccessRule: nat ==> AccessRule
+ 	removeAccessRule(ruleID) == (
+ 		dcl accessRuleToRemove: AccessRule := getAccessRuleByID(ruleID);
+ 		facilityAccessRules := facilityAccessRules \ {accessRuleToRemove};
+ 		
+ 		return accessRuleToRemove;
+ 	)
+ 	pre exists1 accessRule in set facilityAccessRules & accessRule.id = ruleID
+ 	post not exists accessRule in set facilityAccessRules & accessRule.id = ruleID;
 	
 	-- Returns all rules that have influence in a given sector, for a given access card. not expired at time of given date
 	public getValidRelatedRules: Card * Sector * DateUtil`Date ==> set of AccessRule
