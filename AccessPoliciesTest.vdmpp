@@ -169,6 +169,8 @@ class AccessPoliciesTest
 		-- Ask for access scenario
 		-- TODO
 		
+		-- Tests a successful configuration of access cards, card groups and users.
+		-- Includes creation, modification and deletion of several instances.
 		public testSuccessfulAccessCardAndUserConfiguration: Facility ==> ()
 		testSuccessfulAccessCardAndUserConfiguration(facility) == (
 			dcl expirableCardsToCreate: map nat to DateUtil`Date := {
@@ -216,7 +218,7 @@ class AccessPoliciesTest
 			
 			dcl studentCard1: Card := facility.registerCard(mk_DateUtil`Date(2014, 12, 18, 23, 55), 16);
 			dcl studentCard2: Card := facility.registerCard(mk_DateUtil`Date(2014, 12, 19, 23, 55), 17);
-			dcl studentCard3: Card := facility.registerCard(mk_DateUtil`Date(2014, 12, 10, 23, 55), 18);
+			dcl studentCard3: Card := facility.registerCard(mk_DateUtil`Date(2014, 12, 20, 23, 55), 18);
 			
 			dcl staffUsersToCreate: map User`UserName to (nat * Card) := { "staff1" |-> mk_(0, staffCard1),
 				"staff2" |-> mk_(1, staffCard2),
@@ -247,7 +249,7 @@ class AccessPoliciesTest
 				facility.removeCard(studentCard1);
 				assertTrue(not exists user in set facility.users & user.accessCard = studentCard1);
 				
-				-- Remove exchange cards between two users
+				-- Exchange cards between two users
 				let student2 = facility.getUserWithCard(17),
 						student3 = facility.getUserWithCard(18) in (
 						student3.removeAccessCard();
@@ -297,8 +299,14 @@ class AccessPoliciesTest
 			
 			-- Manually add a card to a group
 			addCardToCardGroupScenario(facility, "staff", 12);
+			addCardToCardGroupScenario(facility, "staff", 13);
+			addCardToCardGroupScenario(facility, "staff", 14);
+			addCardToCardGroupScenario(facility, "staff", 15);
+			addCardToCardGroupScenario(facility, "students", 17);
+			addCardToCardGroupScenario(facility, "students", 18);
 		);
 		
+		-- Tests a successful configuration of sector and sector groups, including creation, modification and deletion
 		public testSuccessfulSectorConfiguration: Facility ==> ()
 		testSuccessfulSectorConfiguration(facility) == (
 			-- Create a few parent/main sectors
@@ -388,6 +396,101 @@ class AccessPoliciesTest
 				assertTrue(forall sectorGroup in set facility.sectorGroups & (facility.getSectorByID("boardRoom") not in set sectorGroup.sectors));
 		);
 		
+		-- Test a successful configuration of several access rules. Includes removal of rules as well.
+		-- NOTE: Assumes that the previous tests were run in order to have some data already created for the given facility.
+		public testSuccessfulAccessRuleConfiguration: Facility ==> ()
+		testSuccessfulAccessRuleConfiguration(facility) == (
+			-- Create CARD GROUP -> SECTOR GROUP rule: Students have access to teaching areas
+			dcl rule1: AccessRule := facility.registerAccessRule(true, 0, "students", "teachingAreas", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 14, 23, 55), nil);
+			
+			-- Create CARD GROUP -> SECTOR GROUP rule: Staff members have access to teatching areas and administrative areas
+			dcl rule2: AccessRule := facility.registerAccessRule(true, 1, "staff", "teachingAreas", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 14, 23, 55), nil);
+			dcl rule3: AccessRule := facility.registerAccessRule(true, 2, "staff", "administrativeAreas", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 14, 23, 55), nil);
+			
+			-- Create ACCESS CARD -> SECTOR rule: John Doe's card has access to laboratory 1
+			dcl johnDoe: User := facility.registerUser("johnDoe", 6, facility.registerCard(19));
+			dcl rule4: AccessRule := facility.registerAccessRule(false, 3, 19, "laboratory1", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 14, 23, 55), nil);
+			
+			-- Create CARD GROUP -> SECTOR rule (temporary rule exception): Students are temporarily denied access to classroom 2
+			dcl rule5: AccessRule := facility.registerAccessRule(false, 4, "students", "classRoom2", <DENY>, 2, mk_DateUtil`Date(2014, 12, 14, 23, 55), mk_DateUtil`Date(2014, 12, 20, 23, 55));
+			
+			-- Create ACCESS CARD -> SECTOR GROUP rule: Government auditor's card has access to administrative areas
+			dcl auditor: User := facility.registerUser("auditor", 7, facility.registerCard(20));
+			dcl rule6: AccessRule := facility.registerAccessRule(true, 5, 20, "administrativeAreas", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 14, 23, 55), nil);
+			
+			assertTrue(rule1 in set facility.facilityAccessRules);
+			assertTrue(rule2 in set facility.facilityAccessRules);
+			assertTrue(rule3 in set facility.facilityAccessRules);
+			assertTrue(rule4 in set facility.facilityAccessRules);
+			assertTrue(rule5 in set facility.facilityAccessRules);
+			assertTrue(rule6 in set facility.facilityAccessRules);
+			
+			-- Test staff access request to secretariate (should be allowed)
+			let result = facility.requestAccess(facility.getUserByID(0), facility.getSectorByID("secretariate"), mk_DateUtil`Date(2014, 12, 15, 23, 55)) in ( 
+				assertTrue(result.#1 = <ALLOW>);
+				-- Verify if logging is correct
+				assertTrue(result.#2.timestamp = mk_DateUtil`Date(2014, 12, 15, 23, 55));
+				assertTrue(result.#2.requestingUser = facility.getUserByID(0));
+				assertTrue(result.#2.cardUsed = facility.getUserByID(0).accessCard);
+				assertTrue(result.#2.sector = facility.getSectorByID("secretariate"));
+				assertTrue(result.#2.accessRule = rule3);
+				assertTrue(result.#2.result = <ALLOW>);
+				assertTrue(result.#2 in set facility.accessLog);
+			);
+			
+			-- Test student access request to classroom 1 (should be allowed)
+			let result = facility.requestAccess(facility.getUserByID(4), facility.getSectorByID("classRoom1"), mk_DateUtil`Date(2014, 12, 15, 23, 55)) in ( 
+				assertTrue(result.#1 = <ALLOW>);
+				-- Verify if logging is correct
+				assertTrue(result.#2.timestamp = mk_DateUtil`Date(2014, 12, 15, 23, 55));
+				assertTrue(result.#2.requestingUser = facility.getUserByID(4));
+				assertTrue(result.#2.cardUsed = facility.getUserByID(4).accessCard);
+				assertTrue(result.#2.sector = facility.getSectorByID("classRoom1"));
+				assertTrue(result.#2.accessRule = rule1);
+				assertTrue(result.#2.result = <ALLOW>);
+				assertTrue(result.#2 in set facility.accessLog);
+			);
+			
+			-- Test John Doe's access to laboratory 1 (should be allowed)
+			let result = facility.requestAccess(facility.getUserByID(6), facility.getSectorByID("laboratory1"), mk_DateUtil`Date(2014, 12, 15, 23, 55)) in ( 
+				assertTrue(result.#1 = <ALLOW>);
+				-- Verify if logging is correct
+				assertTrue(result.#2.timestamp = mk_DateUtil`Date(2014, 12, 15, 23, 55));
+				assertTrue(result.#2.requestingUser = facility.getUserByID(6));
+				assertTrue(result.#2.cardUsed = facility.getUserByID(6).accessCard);
+				assertTrue(result.#2.sector = facility.getSectorByID("laboratory1"));
+				assertTrue(result.#2.accessRule = rule4);
+				assertTrue(result.#2.result = <ALLOW>);
+				assertTrue(result.#2 in set facility.accessLog);
+			);
+			
+			-- Test John Doe's access to classBuilding (should have access because has access to a child of the sector)
+			let result = facility.requestAccess(facility.getUserByID(6), facility.getSectorByID("classBuilding"), mk_DateUtil`Date(2014, 12, 15, 23, 55)) in ( 
+				assertTrue(result.#1 = <ALLOW>);
+				-- Verify if logging is correct
+				assertTrue(result.#2.timestamp = mk_DateUtil`Date(2014, 12, 15, 23, 55));
+				assertTrue(result.#2.requestingUser = facility.getUserByID(6));
+				assertTrue(result.#2.cardUsed = facility.getUserByID(6).accessCard);
+				assertTrue(result.#2.sector = facility.getSectorByID("classBuilding"));
+				assertTrue(result.#2.accessRule = rule4);
+				assertTrue(result.#2.result = <ALLOW>);
+				assertTrue(result.#2 in set facility.accessLog);
+			);
+			
+			-- Test student access to classroom 2 (should be denied)
+			-- Verify if logging is correct
+			
+			-- Test student access to classroom 2 after rule date of expiration (should be allowed)
+			-- Verify if logging is correct
+			
+			-- Test student access to classroom 1 after card expiration (should be denied)
+			-- Verify if logging is correct
+			
+			-- Test auditor's access to boardRoom (should be allowed)
+			-- Verify if logging is correct
+			
+		);
+		
 		-- Entry point to run tests
 		public static testAll: () ==> ()
 		testAll() == (
@@ -395,6 +498,7 @@ class AccessPoliciesTest
 			dcl test: AccessPoliciesTest := new AccessPoliciesTest();
 			test.testSuccessfulSectorConfiguration(school);
 			test.testSuccessfulAccessCardAndUserConfiguration(school);
+			test.testSuccessfulAccessRuleConfiguration(school);
 		);
 		
 		-- This test breaks the no two cards with same id safety requirement
