@@ -1,4 +1,10 @@
 class SectorGroup
+/*
+	Sector groups allow the system administrator to organize different sectors
+	in groups for easier management. A sector group must have a unique, non-empty
+	name, and always represent at least one sector.
+*/
+
 types
 	public SectorGroupName = seq1 of char;
 		

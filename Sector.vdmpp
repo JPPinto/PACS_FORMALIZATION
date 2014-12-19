@@ -1,4 +1,13 @@
 class Sector
+/*
+	A sector can be seen as a specific area of a facility, like a room or story,
+	but also a particular resource, like a protected cabinet or vault.
+	Sectors are identified by unique IDs that double as their names.
+	
+	A sector can optionally descend from another sector, allowing different composition
+	complexities of sectors.
+*/
+
 types
 	public SectorID = seq1 of char;
 	

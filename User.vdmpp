@@ -1,4 +1,11 @@
 class User
+/*
+	This class represents a user in the system.
+	A user is more of a "label" to the current holder of a card.
+	No two users can hold the same card, not can they have the same id.
+*/
+
+
 types
 	public UserName = seq1 of char;
 	

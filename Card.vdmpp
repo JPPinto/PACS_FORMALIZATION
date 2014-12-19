@@ -1,4 +1,9 @@
 class Card
+/*
+	This class represents the access card used to gain access to a facility sector.
+	Cards are unique, in the sense that there's only one copy of the physical card.
+	There can be no two cards with the same id. A card can have a date of expiration.
+*/
 
 instance variables
 

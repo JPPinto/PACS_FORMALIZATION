@@ -1,4 +1,10 @@
 class AccessRequest
+/*
+	This class represents the elements that are available in the system request log.
+	These requests are generated each time a user tries to gain access to a sector
+	and provides helpful information that can be used both to inform the user and
+	to potentially solve problems in the access system.
+*/
 
 instance variables
 	-- Time stamp of when access was requested

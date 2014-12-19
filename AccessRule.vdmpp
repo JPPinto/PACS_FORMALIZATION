@@ -1,11 +1,12 @@
 class AccessRule
 	/*
-		An access rule defines the access policy to a given set of sectors (contemplated as a sector group),
-		for a given set of access cards (contemplated as a card group).
+		An access rule defines the access policy to a given set of sectors (contemplated as a unique sector, or a sector group),
+		for a given set of access cards (contemplated as a unique card or a card group).
 		Each rule has a defined priority level from 1 to 3, 3 being the highest. This allows us to create rule exceptions
 		in a more comprehensive way: if two rules restrict the same access, the one with the highest priority prevails.
 		In cases with the same priority, if one DENIES access to the other, the access is denied, as unwanted access is
-		assumed more critical than blocked access. 
+		assumed more critical than blocked access.
+		An access rule must have a unique id and can optionally have a date of expiration.
 	 */
 types
 	public Permission = <ALLOW> | <DENY>;

@@ -1,4 +1,8 @@
 class DateUtil
+/*
+	This class contains helpful types and functions to deal
+	with time and date.
+*/
 
 types  
     public Date :: year : nat

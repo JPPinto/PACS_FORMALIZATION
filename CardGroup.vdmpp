@@ -1,4 +1,10 @@
 class CardGroup
+/*
+	A card group allows the system administrator to organize the multiple cards in the facility
+	into different card groups that can later be used to defined access rules.
+	A card group must have a unique, non-empty name and must always contain at least one card. 
+*/
+
 types
 	public CardGroupName = seq1 of char;
 

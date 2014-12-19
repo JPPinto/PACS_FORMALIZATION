@@ -1,4 +1,11 @@
 class Facility
+/*
+	This class represents both the main facility the physical access control system is being used
+	and an interface to manage the various elements of the system.
+	The facility has a given state represented by its defining elements: users, cards, card groups,
+	sectors, sector groups, access rules and access log. The facility implements several operations
+	to manipulate this state and interact with the system.
+*/
 
 types
 	public FacilityName = seq1 of char;

@@ -1,4 +1,8 @@
 class AccessPoliciesTest
+/*
+	These are the multiple coverage tests developed to ensure
+	the various implementation details work as expected.
+*/
 
 	instance variables
 		
