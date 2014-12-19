@@ -109,13 +109,15 @@ operations
  
  -- Remove a sector by ID
  -- Must remove any children sectors
- -- TODO: Must remove sector from the corresponding sector group and policy
+ -- Must remove sector from the corresponding sector group and policy
  public removeSectorByID: Sector`SectorID ==> ()
  removeSectorByID(sectorID) == (
  	dcl removedSector: Sector := getSectorByID(sectorID);
  	sectors := sectors \ {removedSector};
  	-- Remove from all belonging sector groups
  	removeSectorFromAllGroups(removedSector);
+ 	-- Remove from all corresponding access rules
+ 	removeSectorFromAllAccessRules(removedSector);
  	-- Delete children as well
  	for all sector in set sectors do (
  		if(sector.parent <> nil and sector.parent.id = sectorID) then removeSectorByID(sector.id);
@@ -145,6 +147,7 @@ operations
 	public removeSectorGroup: SectorGroup`SectorGroupName ==> SectorGroup
 	removeSectorGroup(groupName) == (
 		dcl group: SectorGroup := iota g in set sectorGroups & g.groupName = groupName;
+		removeSectorGroupFromAllAccessRules(group);
 		sectorGroups := sectorGroups \ {group};
 		return group;
 	)
@@ -280,7 +283,7 @@ operations
 	post RESULT in set facilityAccessCards;
 	
 	-- Removes a given card from the facility, removing it from the user that may have it and any card groups it belongs to
-	-- TODO: Also must remove from access rules
+	-- Also must remove from access rules
 	public removeCard: Card ==> ()
 	removeCard(accessCard) == (
 		if (exists u in set users & (u.accessCard = accessCard)) then (
@@ -288,6 +291,7 @@ operations
 			user.removeAccessCard();
 		);
 		removeCardFromAllGroups(accessCard);
+		removeCardFromAllAccessRules(accessCard);
 		facilityAccessCards := facilityAccessCards \ {accessCard}
 	)
 	pre accessCard in set facilityAccessCards
@@ -369,6 +373,7 @@ operations
 	-- Removes a card group from the system, returns the removed group
 	public removeCardGroup: CardGroup ==> CardGroup
 	removeCardGroup(group) == (
+		removeCardGroupFromAllAccessRules(group);
 		cardGroups := cardGroups \ {group};
 		return group;
 	)
@@ -498,6 +503,46 @@ operations
  	)
  	pre exists1 accessRule in set facilityAccessRules & accessRule.id = ruleID
  	post not exists accessRule in set facilityAccessRules & accessRule.id = ruleID;
+ 	
+ 	-- Removes a card from all rules containing it. This means the rule must be deleted.
+	public removeCardFromAllAccessRules: Card ==> ()
+	removeCardFromAllAccessRules(accessCard) == (
+		dcl rulesToRemove: set of nat := {};
+		for all accessRule in set facilityAccessRules do (
+			if accessRule.accessCard <> nil and accessRule.accessCard = accessCard then rulesToRemove := rulesToRemove union {accessRule.id};
+		);
+		for all ruleID in set rulesToRemove do (dcl r: AccessRule := removeAccessRule(ruleID); return);
+	);
+	
+	-- Removes a card group from all rules containing it. This means the rule must be deleted.
+	public removeCardGroupFromAllAccessRules: CardGroup ==> ()
+	removeCardGroupFromAllAccessRules(cardGroup) == (
+		dcl rulesToRemove: set of nat := {};
+		for all accessRule in set facilityAccessRules do (
+			if accessRule.cardGroup <> nil and accessRule.cardGroup = cardGroup then rulesToRemove := rulesToRemove union {accessRule.id};
+		);
+		for all ruleID in set rulesToRemove do (dcl r: AccessRule := removeAccessRule(ruleID); return);
+	);
+	
+	-- Removes a sector from all rules containing it. This means the rule must be deleted.
+	public removeSectorFromAllAccessRules: Sector ==> ()
+	removeSectorFromAllAccessRules(sector) == (
+		dcl rulesToRemove: set of nat := {};
+		for all accessRule in set facilityAccessRules do (
+			if accessRule.sector <> nil and accessRule.sector = sector then rulesToRemove := rulesToRemove union {accessRule.id};
+		);
+		for all ruleID in set rulesToRemove do (dcl r: AccessRule := removeAccessRule(ruleID); return);
+	);
+	
+	-- Removes a sector group from all rules containing it. This means the rule must be deleted.
+	public removeSectorGroupFromAllAccessRules: SectorGroup ==> ()
+	removeSectorGroupFromAllAccessRules(sectorGroup) == (
+		dcl rulesToRemove: set of nat := {};
+		for all accessRule in set facilityAccessRules do (
+			if accessRule.sectorGroup <> nil and accessRule.sectorGroup = sectorGroup then rulesToRemove := rulesToRemove union {accessRule.id};
+		);
+		for all ruleID in set rulesToRemove do (dcl r: AccessRule := removeAccessRule(ruleID); return);
+	);
 	
 	-- Returns all rules that have influence in a given sector, for a given access card. not expired at time of given date
 	public getValidRelatedRules: Card * Sector * DateUtil`Date ==> set of AccessRule

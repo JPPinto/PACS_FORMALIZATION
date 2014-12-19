@@ -546,6 +546,29 @@ class AccessPoliciesTest
 			);
 		);
 		
+		-- Removes cards, card groups, sectors and sectors groups to test if the corresponding rules are automatically removed
+		public testElementRemovalThatCausesAccessRuleRemoval: Facility ==> ()
+		testElementRemovalThatCausesAccessRuleRemoval(facility) == (
+			
+			-- Remove a sector in use by rule 4 (id #3)
+			facility.removeSectorByID("laboratory1");
+			assertTrue(not exists rule in set facility.facilityAccessRules & rule.id = 3); 
+			
+			-- Remove a sector group in use by rule 1 (id #0)
+			let removedGroup = facility.removeSectorGroup("teachingAreas") in (
+				assertTrue(not exists rule in set facility.facilityAccessRules & rule.id = 0);
+			);
+			
+			-- Remove a card in use by rule 6 (id #5)
+			facility.removeCard(20);
+			assertTrue(not exists rule in set facility.facilityAccessRules & rule.id = 0);
+			
+			-- Remove a card group in use by rule 2 (id #1)
+			let removedGroup = facility.removeCardGroup("staff") in (
+				assertTrue(not exists rule in set facility.facilityAccessRules & rule.id = 1);
+			);
+		); 
+		
 		-- Entry point to run tests
 		public static testAll: () ==> ()
 		testAll() == (
@@ -555,6 +578,7 @@ class AccessPoliciesTest
 			test.testSuccessfulAccessCardAndUserConfiguration(school);
 			test.testSuccessfulAccessRuleConfiguration(school);
 			test.testAccessRequests(school);
+			test.testElementRemovalThatCausesAccessRuleRemoval(school);
 		);
 		
 		-- This test breaks the no two cards with same id safety requirement
