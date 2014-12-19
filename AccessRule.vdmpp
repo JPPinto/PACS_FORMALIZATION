@@ -117,13 +117,6 @@ operations
 	public getPermission: () ==> Permission
 	getPermission() == return permission;
 	
-	public getExpirationDate: () ==> [DateUtil`Date]
-	getExpirationDate() == return endDate;
-	
-	public setExpirationDate: DateUtil`Date ==> ()
-	setExpirationDate(doe) == endDate := doe
-	pre DateUtil`isAfter(doe, startDate);
-	
 	public isExpired: DateUtil`Date ==> bool
 	isExpired(currentDate) == return if (endDate <> nil) then DateUtil`isAfter(currentDate, endDate) else false;
 	

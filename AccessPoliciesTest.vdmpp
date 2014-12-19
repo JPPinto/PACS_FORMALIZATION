@@ -411,6 +411,9 @@ class AccessPoliciesTest
 			dcl johnDoe: User := facility.registerUser("johnDoe", 6, facility.registerCard(19));
 			dcl rule4: AccessRule := facility.registerAccessRule(false, 3, johnDoe.accessCard.id, "laboratory1", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 14, 23, 55), nil);
 			
+			-- Create CARD GROUP -> SECTOR rule (temporary rule exception): Students are temporarily allowed access to classroom 2 (should contradict and be overrided by previous rule)
+			dcl rule8: AccessRule := facility.registerAccessRule(false, 7, "students", "classRoom2", <ALLOW>, 2, mk_DateUtil`Date(2014, 12, 14, 23, 55), mk_DateUtil`Date(2014, 12, 20, 23, 55));
+			
 			-- Create CARD GROUP -> SECTOR rule (temporary rule exception): Students are temporarily denied access to classroom 2
 			dcl rule5: AccessRule := facility.registerAccessRule(false, 4, "students", "classRoom2", <DENY>, 2, mk_DateUtil`Date(2014, 12, 14, 23, 55), mk_DateUtil`Date(2014, 12, 20, 23, 55));
 			
@@ -429,6 +432,7 @@ class AccessPoliciesTest
 			assertTrue(rule5 in set facility.facilityAccessRules);
 			assertTrue(rule6 in set facility.facilityAccessRules);
 			assertTrue(rule7 in set facility.facilityAccessRules);
+			assertTrue(rule8 in set facility.facilityAccessRules);
 			
 			-- Remove a rule
 			let removedRule = facility.removeAccessRule(rule7.id) in
