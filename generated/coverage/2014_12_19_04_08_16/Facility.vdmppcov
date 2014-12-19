@@ -1,0 +1,583 @@
+class Facility
+/*
+	This class represents both the main facility the physical access control system is being used
+	and an interface to manage the various elements of the system.
+	The facility has a given state represented by its defining elements: users, cards, card groups,
+	sectors, sector groups, access rules and access log. The facility implements several operations
+	to manipulate this state and interact with the system.
+*/
+
+types
+	public FacilityName = seq1 of char;
+
+instance variables
+	-- The set of all users currently registered in the facility
+	public users: set of User := {};
+	
+	-- The set of all cards currently registered in the facility
+	public facilityAccessCards: set of Card := {};
+	
+		-- The set of all card groups currently defined for the facility
+	public cardGroups: set of CardGroup := {};
+	
+	-- The set of all sectors currently defined for the facility
+	public sectors: set of Sector := {};
+	
+	-- The set of all sector groups currently defined for the facility
+	public sectorGroups: set of SectorGroup := {};
+	
+	
+	
+		-- The set of all access rules currently defined for the facility
+	public facilityAccessRules: set of AccessRule := {};
+	
+	-- The complete access log, represented as a set of access requests
+	public accessLog: set of AccessRequest := {};
+	
+	public name: FacilityName;
+	
+	inv name <> "";
+	
+	-- Checks if there are no two users with the same card
+	inv forall user in set users &
+			(not exists user2 in set users &
+				(user <> user2 and user.getAccessCard() <> nil and user.getAccessCard() = user2.getAccessCard()));
+				
+	-- Checks if there are no two users with the same id
+	inv forall user in set users &
+			(not exists user2 in set users & (user <> user2 and user.getID() = user2.getID()));
+	
+	-- Checks if there are no two cards with the same id
+	inv forall accessCard in set facilityAccessCards &
+			(not exists otherAccessCard in set facilityAccessCards &
+				(accessCard <> otherAccessCard and accessCard.getID() = otherAccessCard.getID()));
+				
+	-- Checks if there are no two card groups with the same group name
+	inv forall cardGroup in set cardGroups &
+			(not exists otherCardGroup in set cardGroups &
+				(cardGroup <> otherCardGroup and cardGroup.getGroupName() = otherCardGroup.getGroupName()));
+				
+	-- Checks if there are no two sectors with the same id
+	inv forall sector in set sectors &
+		(not exists otherSector in set sectors &
+			(sector <> otherSector and sector.getID() = otherSector.getID()));
+				
+	-- Checks if there are no two sector groups with the same group name
+	inv forall sectorGroup in set sectorGroups &
+			(not exists otherSectorGroup in set sectorGroups &
+				(sectorGroup <> otherSectorGroup and sectorGroup.getGroupName() = otherSectorGroup.getGroupName()));
+				
+	-- Checks if there are no two rules with the same id
+	inv forall accessRule in set facilityAccessRules &
+			(not exists otherAccessRule in set facilityAccessRules &
+				(accessRule <> otherAccessRule and accessRule.id = otherAccessRule.id));
+	
+	
+operations
+
+	public Facility: FacilityName ==> Facility
+	Facility(facilityName) == (
+		name := facilityName;
+		
+		return self
+	)
+	pre facilityName <> "";
+	
+	 --------------------------
+	/**  Sector management  **/
+ ---------------------------
+ 
+ -- Register a new sector without specifying a parent sector
+ public registerSector: Sector`SectorID ==> Sector
+ registerSector(sectorID) == (
+ 	dcl newSector: Sector := new Sector(sectorID);
+ 	sectors := sectors union {newSector};
+ 
+ 	return newSector;
+ )
+ pre forall sector in set sectors & sector.id <> sectorID
+ post exists1 sector in set sectors & sector.id = sectorID;
+ 
+  -- Register a new sector with a parent sector
+ public registerSector: Sector`SectorID * Sector ==> Sector
+ registerSector(sectorID, parentSector) == (
+ 	dcl newSector: Sector := new Sector(sectorID, parentSector);
+ 	sectors := sectors union {newSector};
+ 
+ 	return newSector;
+ )
+ pre forall sector in set sectors & sector.id <> sectorID
+ post exists1 sector in set sectors & sector.id = sectorID;
+ 
+ -- Get a registered sector, given its ID
+ public getSectorByID: Sector`SectorID ==> Sector
+ getSectorByID(sectorID) == return iota s in set sectors & s.id = sectorID
+ pre exists1 s in set sectors & s.id = sectorID;
+ 
+ -- Remove a sector by ID
+ -- Must remove any children sectors
+ -- Must remove sector from the corresponding sector group and policy
+ public removeSectorByID: Sector`SectorID ==> ()
+ removeSectorByID(sectorID) == (
+ 	dcl removedSector: Sector := getSectorByID(sectorID);
+ 	sectors := sectors \ {removedSector};
+ 	-- Remove from all belonging sector groups
+ 	removeSectorFromAllGroups(removedSector);
+ 	-- Remove from all corresponding access rules
+ 	removeSectorFromAllAccessRules(removedSector);
+ 	-- Delete children as well
+ 	for all sector in set sectors do (
+ 		if(sector.parent <> nil and sector.parent.id = sectorID) then removeSectorByID(sector.id);
+ 	);
+ )
+ pre exists1 sector in set sectors & sector.id = sectorID
+ post not exists sector in set sectors & sector.id = sectorID;
+ 
+	 --------------------------------
+	/**  Sector Group management  **/
+ ---------------------------------
+	
+ -- Register a new sector group
+ -- There cannot exist two sector groups with the same name
+ public registerSectorGroup: SectorGroup`SectorGroupName * set of Sector ==> SectorGroup
+ registerSectorGroup(groupName, memberSectors) == (
+ 		dcl newSectorGroup: SectorGroup := new SectorGroup(groupName, memberSectors);
+ 		sectorGroups := sectorGroups union {newSectorGroup};
+ 		
+ 		return newSectorGroup;
+ )
+ pre groupName <> ""
+ 	and not exists sectorGroup in set sectorGroups & sectorGroup.groupName = groupName
+ post exists1 sectorGroup in set sectorGroups & sectorGroup.groupName = groupName;
+ 
+ -- Removes a sector group from the system, given its name and returns the removed group
+	public removeSectorGroup: SectorGroup`SectorGroupName ==> SectorGroup
+	removeSectorGroup(groupName) == (
+		dcl group: SectorGroup := iota g in set sectorGroups & g.groupName = groupName;
+		removeSectorGroupFromAllAccessRules(group);
+		sectorGroups := sectorGroups \ {group};
+		return group;
+	)
+	pre exists g in set sectorGroups & g.groupName = groupName
+	post RESULT not in set sectorGroups;
+ 
+ -- Removes a sector from a group, given a sector id and a group name
+ -- The given group must contain the sector, and if the group would be left empty, it must be removed
+ public removeSectorFromGroup: Sector`SectorID * SectorGroup`SectorGroupName ==> ()
+ removeSectorFromGroup(sectorID, groupName) == (
+	dcl sectorGroup: SectorGroup := iota g in set sectorGroups & g.groupName = groupName;
+	dcl sector: Sector := getSectorByID(sectorID);
+	if(card sectorGroup.sectors > 1) then sectorGroup.removeSector(sector)
+ 	else (
+ 		dcl removedSectorGroup: SectorGroup := removeSectorGroup(groupName);
+ 		return;
+ 	);
+ 	return;
+ )
+ pre (exists g in set sectorGroups & (g.groupName = groupName and exists s in set g.sectors & s.id = sectorID))
+ post not exists g in set sectorGroups & (g.groupName = groupName and exists s in set g.sectors & s.id = sectorID);
+ 
+ -- Removes a card from a group, given a card and a group
+ -- The given group must contain the card, and if the group would be left empty, it must be removed
+ public removeSectorFromGroup: Sector * SectorGroup ==> ()
+ removeSectorFromGroup(sector, sectorGroup) == (
+ 	if(card sectorGroup.sectors > 1) then sectorGroup.removeSector(sector)
+ 	else (
+ 		dcl removedSectorGroup: SectorGroup := removeSectorGroup(sectorGroup.groupName);
+ 		return;
+ 	);
+ 	return;
+ )
+ pre sector in set sectorGroup.sectors
+ post (sector not in set sectorGroup.sectors) or (sectorGroup not in set sectorGroups);
+ 
+  -- Removes a sector from all groups.
+ public removeSectorFromAllGroups: Sector ==> ()
+ removeSectorFromAllGroups(sector) == (
+ 	for all sectorGroup in set sectorGroups do (
+ 		if sectorGroup.containsSector(sector) then removeSectorFromGroup(sector, sectorGroup);
+ 	);
+ )
+ post not exists sectorGroup in set sectorGroups & (sector in set sectorGroup.sectors);
+ 
+ -- Adds a sector to a group, given the sector id and the group name
+ public addSectorToGroup: Sector`SectorID * SectorGroup`SectorGroupName ==> ()
+ addSectorToGroup(sectorID, sectorGroupName) == (
+ 	dcl sectorGroup: SectorGroup := iota g in set sectorGroups & g.groupName = sectorGroupName;
+ 	dcl sector: Sector := getSectorByID(sectorID);
+ 	sectorGroup.addSector(sector);
+ )
+ pre not exists group in set sectorGroups & (group.groupName = sectorGroupName and exists sector in set group.sectors & sector.id = sectorID)
+ post exists1 group in set sectorGroups & (group.groupName = sectorGroupName and exists1 sector in set group.sectors & sector.id = sectorID);
+ 
+ -- Retrieves a sector group given its name
+ public getSectorGroupByName: SectorGroup`SectorGroupName ==> SectorGroup
+ getSectorGroupByName(groupname) == (
+ 	return iota g in set sectorGroups & g.groupName = groupname;
+ );
+	
+	 -------------------------
+	/**  User management  **/
+ -------------------------
+	
+	-- Registers a user in the system, provided an access card
+	public registerUser: User`UserName * nat * Card ==> User
+	registerUser(username, id, accessCard) == (
+		dcl newuser: User := new User(username, id, accessCard);
+		users := users union {newuser};
+		
+		return newuser;
+	)
+	pre (not exists user in set users & user.id = id)
+		and (not exists user in set users & user.accessCard = accessCard)
+	post RESULT in set users;
+	
+	-- Registers a user in the system, no access card provided
+	public registerUser: User`UserName * nat ==> User
+	registerUser(username, id) == (
+		dcl newuser: User := new User(username, id);
+		users := users union {newuser};
+		
+		return newuser;
+	)
+	pre (not exists user in set users & user.id = id)
+	post RESULT in set users;
+	
+	-- Removes a user from the system, given its ID
+	public removeUser: nat ==> ()
+	removeUser(userID) == (
+		dcl user: User := iota u in set users & u.getID() = userID;
+		removeUser(user);
+	)
+	pre exists u in set users & u.id = userID
+	post not exists u in set users & u.id = userID;
+	
+	-- Removes a user from the system
+	public removeUser: User ==> ()
+	removeUser(user) == users := users \ {user}
+	pre user in set users
+	post user not in set users;
+	
+	-- Returns a user matching the given id
+	public getUserByID: nat ==> User
+	getUserByID(userID) == return iota u in set users & u.getID() = userID
+	pre exists1 user in set users & user.id = userID;
+	
+	 ----------------------
+	/** Card management **/
+ -----------------------
+	
+	-- Registers a card in the system with a given expiration date
+	public registerCard: DateUtil`Date * nat ==> Card
+	registerCard(doe, id) == (
+		dcl accessCard: Card := new Card(doe, id);
+		facilityAccessCards := facilityAccessCards union {accessCard};
+		
+		return accessCard;
+	)
+	pre (not exists accessCard in set facilityAccessCards & accessCard.id = id)
+	post RESULT in set facilityAccessCards;
+	
+	-- Registes a card in the system
+	public registerCard: nat ==> Card
+	registerCard(id) == (
+		dcl accessCard: Card := new Card(id);
+		facilityAccessCards := facilityAccessCards union {accessCard};
+		
+		return accessCard;
+	)
+	pre (not exists accessCard in set facilityAccessCards & accessCard.id = id)
+	post RESULT in set facilityAccessCards;
+	
+	-- Removes a given card from the facility, removing it from the user that may have it and any card groups it belongs to
+	-- Also must remove from access rules
+	public removeCard: Card ==> ()
+	removeCard(accessCard) == (
+		if (exists u in set users & (u.accessCard = accessCard)) then (
+			dcl user: User := getUserWithCard(accessCard);
+			user.removeAccessCard();
+		);
+		removeCardFromAllGroups(accessCard);
+		removeCardFromAllAccessRules(accessCard);
+		facilityAccessCards := facilityAccessCards \ {accessCard}
+	)
+	pre accessCard in set facilityAccessCards
+	post accessCard not in set facilityAccessCards;
+	
+	-- Removes a card with the given ID from the facility, removing it from the user that may have it and any card groups it belongs to
+	public removeCard: nat ==> ()
+	removeCard(cardID) == (
+		dcl accessCard: Card := iota c in set facilityAccessCards & c.getID() = cardID;
+		removeCard(accessCard);
+	)
+	pre exists c in set facilityAccessCards & c.id = cardID
+	post not exists c in set facilityAccessCards & c.id = cardID;
+	
+	-- Attributes a card to a user
+	public allocateCard: User * Card ==> ()
+	allocateCard(user, accessCard) == (
+		user.setAcessCard(accessCard);
+	)
+	pre not exists u in set users & u.accessCard = accessCard
+	post exists1 u in set users & u.accessCard = accessCard;
+	
+	-- Attributes a card to a user, given the user and card id
+	public allocateCard: nat * nat ==> ()
+	allocateCard(userID, accessCardID) == (
+		dcl accessCard: Card := iota c in set facilityAccessCards & c.id = accessCardID;
+		dcl user: User := iota u in set users & u.id = userID;
+		user.setAcessCard(accessCard);
+	)
+	pre not exists u in set users & (u.id = userID and u.accessCard <> nil and u.accessCard.id = accessCardID)
+	post exists1 u in set users & (u.id = userID and u.accessCard.id = accessCardID);
+	
+	-- Returns the user with a given card
+	public getUserWithCard: Card ==> User
+	getUserWithCard(accessCard) == (
+		return iota user in set users & user.accessCard = accessCard;
+	)
+	pre exists u in set users & (u.accessCard <> nil and u.accessCard = accessCard);
+	
+	-- Returns the user with a card with a matching id
+	public getUserWithCard: nat ==> User
+	getUserWithCard(accessCardID) == (
+		dcl accessCard: Card := iota c in set facilityAccessCards & c.id = accessCardID;
+		return getUserWithCard(accessCard);
+	)
+	pre exists u in set users & (u.accessCard <> nil and u.accessCard.id = accessCardID);
+	
+	-- Returns the card matching the given id
+	public getAccessCardByID: nat ==> Card
+	getAccessCardByID(accessCardID) == return iota c in set facilityAccessCards & c.id = accessCardID
+	pre exists c in set facilityAccessCards & c.id = accessCardID;
+	
+	 -----------------------------
+	/** Card group management **/
+ -----------------------------
+ 
+ -- Register a new card group
+ -- There cannot exist two card groups with the same name
+ public registerCardGroup: CardGroup`CardGroupName * set of Card ==> CardGroup
+ registerCardGroup(groupName, accessCards) == (
+ 		dcl newCardGroup: CardGroup := new CardGroup(groupName, accessCards);
+ 		cardGroups := cardGroups union {newCardGroup};
+ 		
+ 		return newCardGroup;
+ )
+ pre groupName <> ""
+ 	and not exists cardGroup in set cardGroups & cardGroup.groupName = groupName
+ post exists1 cardGroup in set cardGroups & cardGroup.groupName = groupName;
+ 
+ -- Removes a card group from the system, given its name and returns the removed group
+	public removeCardGroup: CardGroup`CardGroupName ==> CardGroup
+	removeCardGroup(groupName) == (
+		dcl group: CardGroup := iota g in set cardGroups & g.groupName = groupName;
+		return removeCardGroup(group);
+	)
+	pre exists g in set cardGroups & g.groupName = groupName
+	post RESULT not in set cardGroups;
+	
+	-- Removes a card group from the system, returns the removed group
+	public removeCardGroup: CardGroup ==> CardGroup
+	removeCardGroup(group) == (
+		removeCardGroupFromAllAccessRules(group);
+		cardGroups := cardGroups \ {group};
+		return group;
+	)
+	pre group in set cardGroups
+	post RESULT not in set cardGroups;
+ 
+ -- Removes a card from a group, given a card id and a group name
+ -- The given group must contain the card, and if the group would be left empty, it must be removed
+ public removeCardFromGroup: nat * CardGroup`CardGroupName ==> ()
+ removeCardFromGroup(cardID, groupName) == (
+	dcl cardGroup: CardGroup := iota g in set cardGroups & g.groupName = groupName;
+	dcl accessCard: Card := iota c in set facilityAccessCards & c.id = cardID;
+	if(card cardGroup.accessCards > 1) then cardGroup.removeCard(accessCard)
+ 	else (
+ 		dcl removedCardGroup: CardGroup := removeCardGroup(cardGroup);
+ 		return;
+ 	);
+ 	return;
+ )
+ pre (exists g in set cardGroups & (g.groupName = groupName and exists c in set g.accessCards & c.id = cardID))
+ post not exists g in set cardGroups & (g.groupName = groupName and exists c in set g.accessCards & c.id = cardID);
+ 
+ -- Removes a card from a group, given a card and a group
+ -- The given group must contain the card, and if the group would be left empty, it must be removed
+ public removeCardFromGroup: Card * CardGroup ==> ()
+ removeCardFromGroup(accessCard, cardGroup) == (
+ 	if(card cardGroup.accessCards > 1) then cardGroup.removeCard(accessCard)
+ 	else (
+ 		dcl removedCardGroup: CardGroup := removeCardGroup(cardGroup);
+ 		return;
+ 	);
+ 	return;
+ )
+ pre accessCard in set cardGroup.accessCards
+ post (accessCard not in set cardGroup.accessCards) or (cardGroup not in set cardGroups);
+ 
+  -- Removes a card from all groups.
+ public removeCardFromAllGroups: Card ==> ()
+ removeCardFromAllGroups(accessCard) == (
+ 	for all cardGroup in set cardGroups do (
+ 		if cardGroup.containsCard(accessCard) then removeCardFromGroup(accessCard, cardGroup);
+ 	);
+ );
+ 
+ -- Adds a card to a group, given the card id and the group name
+ public addCardToGroup: nat * CardGroup`CardGroupName ==> ()
+ addCardToGroup(cardID, cardGroupName) == (
+ 	dcl cardGroup: CardGroup := iota g in set cardGroups & g.groupName = cardGroupName;
+ 	dcl accessCard: Card := iota c in set facilityAccessCards & c.id = cardID;
+ 	cardGroup.addCard(accessCard);
+ )
+ pre not exists group in set cardGroups & (group.groupName = cardGroupName and exists accessCard in set group.accessCards & accessCard.id = cardID)
+ post exists1 group in set cardGroups & (group.groupName = cardGroupName and exists1 accessCard in set group.accessCards & accessCard.id = cardID);
+ 
+ -- Returns a card group given its name
+ public getCardGroupByName: CardGroup`CardGroupName ==> CardGroup
+ getCardGroupByName(cardGroupName) == return iota g in set cardGroups & g.groupName = cardGroupName
+ pre exists g in set cardGroups & g.groupName = cardGroupName;
+ 
+	 ----------------------------------
+	/** Access rules and requesting **/
+ -----------------------------------
+ 
+ 	-- Register a new access rule given a concerned sector or sector group and access card, a start date and, optionally, an expiration date
+ 	public registerAccessRule: bool * nat * nat * seq1 of char * AccessRule`Permission * nat1 *  DateUtil`Date * [DateUtil`Date] ==> AccessRule
+ 	registerAccessRule(useSectorGroup, ruleID, cardID, sectorOrSectorGroupID, permission, priority, startDate, endDate) == (
+ 		if useSectorGroup then (
+	 		dcl accessCard: Card := getAccessCardByID(cardID);
+	 		dcl sectorGroup: SectorGroup := getSectorGroupByName(sectorOrSectorGroupID);
+	 		dcl newRule: AccessRule := new AccessRule(ruleID, sectorGroup, accessCard, permission, priority, startDate, endDate);
+	 		
+	 		facilityAccessRules := facilityAccessRules union {newRule};
+ 		
+ 			return newRule;
+ 		)
+ 		else (
+ 			dcl accessCard: Card := getAccessCardByID(cardID);
+ 			dcl sector: Sector := getSectorByID(sectorOrSectorGroupID);
+	 		dcl newRule: AccessRule := new AccessRule(ruleID, sector, accessCard, permission, priority, startDate, endDate);
+	 		
+	 		facilityAccessRules := facilityAccessRules union {newRule};
+	 		
+	 		return newRule;
+ 		)
+ 	)
+ 	pre not exists rule in set facilityAccessRules & rule.id = ruleID
+ 	post exists1 rule in set facilityAccessRules & rule.id = ruleID;
+ 	
+ 	-- Register a new access rule given a concerned sector or sector group and access card group, a start date and, optionally, an expiration date
+ 	public registerAccessRule: bool * nat * CardGroup`CardGroupName * seq1 of char * AccessRule`Permission * nat1 *  DateUtil`Date * [DateUtil`Date] ==> AccessRule
+ 	registerAccessRule(useSectorGroup, ruleID, cardGroupName, sectorOrSectorGroupID, permission, priority, startDate, endDate) == (
+ 		if useSectorGroup then (
+	 		dcl cardGroup: CardGroup := getCardGroupByName(cardGroupName);
+	 		dcl sectorGroup: SectorGroup := getSectorGroupByName(sectorOrSectorGroupID);
+	 		dcl newRule: AccessRule := new AccessRule(ruleID, sectorGroup, cardGroup, permission, priority, startDate, endDate);
+	 		
+	 		
+	 		facilityAccessRules := facilityAccessRules union {newRule};
+ 		
+ 			return newRule;
+ 		)
+ 		else (
+ 			dcl cardGroup: CardGroup := getCardGroupByName(cardGroupName);
+	 		dcl sector: Sector := getSectorByID(sectorOrSectorGroupID);
+	 		dcl newRule: AccessRule := new AccessRule(ruleID, sector, cardGroup, permission, priority, startDate, endDate);
+	 		
+	 		facilityAccessRules := facilityAccessRules union {newRule};
+	 		
+	 		return newRule;
+ 		)
+ 	)
+ 	pre not exists rule in set facilityAccessRules & rule.id = ruleID
+ 	post exists1 rule in set facilityAccessRules & rule.id = ruleID;
+ 	
+ 	-- Returns the rule with the given id
+ 	public getAccessRuleByID: nat ==> AccessRule
+ 	getAccessRuleByID(ruleID) == return iota rule in set facilityAccessRules & rule.id = ruleID
+ 	pre exists1 rule in set facilityAccessRules & rule.id = ruleID;
+ 	
+ 	-- Removes an access rule, given its id, and returns it
+ 	public removeAccessRule: nat ==> AccessRule
+ 	removeAccessRule(ruleID) == (
+ 		dcl accessRuleToRemove: AccessRule := getAccessRuleByID(ruleID);
+ 		facilityAccessRules := facilityAccessRules \ {accessRuleToRemove};
+ 		
+ 		return accessRuleToRemove;
+ 	)
+ 	pre exists1 accessRule in set facilityAccessRules & accessRule.id = ruleID
+ 	post not exists accessRule in set facilityAccessRules & accessRule.id = ruleID;
+ 	
+ 	-- Removes a card from all rules containing it. This means the rule must be deleted.
+	public removeCardFromAllAccessRules: Card ==> ()
+	removeCardFromAllAccessRules(accessCard) == (
+		dcl rulesToRemove: set of nat := {};
+		for all accessRule in set facilityAccessRules do (
+			if accessRule.accessCard <> nil and accessRule.accessCard = accessCard then rulesToRemove := rulesToRemove union {accessRule.id};
+		);
+		for all ruleID in set rulesToRemove do (dcl r: AccessRule := removeAccessRule(ruleID); return);
+	);
+	
+	-- Removes a card group from all rules containing it. This means the rule must be deleted.
+	public removeCardGroupFromAllAccessRules: CardGroup ==> ()
+	removeCardGroupFromAllAccessRules(cardGroup) == (
+		dcl rulesToRemove: set of nat := {};
+		for all accessRule in set facilityAccessRules do (
+			if accessRule.cardGroup <> nil and accessRule.cardGroup = cardGroup then rulesToRemove := rulesToRemove union {accessRule.id};
+		);
+		for all ruleID in set rulesToRemove do (dcl r: AccessRule := removeAccessRule(ruleID); return);
+	);
+	
+	-- Removes a sector from all rules containing it. This means the rule must be deleted.
+	public removeSectorFromAllAccessRules: Sector ==> ()
+	removeSectorFromAllAccessRules(sector) == (
+		dcl rulesToRemove: set of nat := {};
+		for all accessRule in set facilityAccessRules do (
+			if accessRule.sector <> nil and accessRule.sector = sector then rulesToRemove := rulesToRemove union {accessRule.id};
+		);
+		for all ruleID in set rulesToRemove do (dcl r: AccessRule := removeAccessRule(ruleID); return);
+	);
+	
+	-- Removes a sector group from all rules containing it. This means the rule must be deleted.
+	public removeSectorGroupFromAllAccessRules: SectorGroup ==> ()
+	removeSectorGroupFromAllAccessRules(sectorGroup) == (
+		dcl rulesToRemove: set of nat := {};
+		for all accessRule in set facilityAccessRules do (
+			if accessRule.sectorGroup <> nil and accessRule.sectorGroup = sectorGroup then rulesToRemove := rulesToRemove union {accessRule.id};
+		);
+		for all ruleID in set rulesToRemove do (dcl r: AccessRule := removeAccessRule(ruleID); return);
+	);
+	
+	-- Returns all rules that have influence in a given sector, for a given access card. not expired at time of given date
+	public getValidRelatedRules: Card * Sector * DateUtil`Date ==> set of AccessRule
+	getValidRelatedRules(accessCard, accessedSector, date) == (
+		dcl relatedRules: set of AccessRule := {};
+		for all rule in set facilityAccessRules do (
+			if (rule.ruleRefersToAccessCardAndSector(accessCard, accessedSector) and not rule.isExpired(date)) then relatedRules := relatedRules union {rule};
+		);
+		
+		return relatedRules;
+	);
+	
+	-- Requests access given a requesting user, the sector access has been requested to, and the date of request
+	-- If the user's card is expired, result is automatically <DENY>
+	public requestAccess: User * Sector * DateUtil`Date ==> AccessRule`Permission * AccessRequest
+	requestAccess(requester, sector, requestDate) == (
+		dcl relatedRules: set of AccessRule := getValidRelatedRules(requester.getAccessCard(), sector, requestDate);
+		dcl highestPriorityRule: AccessRule := AccessRule`getHighestPriorityValidRuleFromSet(relatedRules, requestDate);
+		dcl finalResult: AccessRule`Permission := if requester.getAccessCard().isExpired(requestDate) then <DENY> else highestPriorityRule.getPermission();
+		
+		dcl loggedRequest: AccessRequest :=
+			new AccessRequest(requester, requester.getAccessCard(), sector, highestPriorityRule, finalResult, requestDate);
+		
+		accessLog := accessLog union {loggedRequest};
+		
+		return mk_(finalResult, loggedRequest);
+	)
+	pre requester in set users
+		and sector in set sectors;
+
+end Facility

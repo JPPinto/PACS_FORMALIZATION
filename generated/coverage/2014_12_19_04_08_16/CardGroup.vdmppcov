@@ -1,0 +1,50 @@
+class CardGroup
+/*
+	A card group allows the system administrator to organize the multiple cards in the facility
+	into different card groups that can later be used to defined access rules.
+	A card group must have a unique, non-empty name and must always contain at least one card. 
+*/
+
+types
+	public CardGroupName = seq1 of char;
+
+instance variables
+	public accessCards : set of Card;
+	public groupName : CardGroupName;
+	
+	inv (card accessCards) > 0;
+	inv groupName <> "";
+	
+operations
+
+	-- Create a new group of cards, given the group name and a set of different cards
+	public CardGroup: CardGroupName * set of Card ==> CardGroup
+	CardGroup(cardGroupName, groupAccessCards) == (
+		groupName := cardGroupName;
+		accessCards := groupAccessCards;
+		
+		return self;
+	)
+	pre groupName <> ""
+		and (card groupAccessCards) > 0;
+		
+	public containsCard: Card ==> bool
+	containsCard(accessCard) == return accessCard in set accessCards;
+	
+	public getGroupName: () ==> CardGroupName
+	getGroupName() == return groupName;
+	
+	-- Add a previously non existent card to the card group
+	-- Card mustn't exist in the group
+	public addCard: Card ==> ()
+	addCard(newAccessCard) == accessCards := accessCards union {newAccessCard}
+	pre newAccessCard not in set accessCards;
+	
+	-- Remove an existing card from the card group
+	-- Card has to exist in the group and we can't leave the group empty
+	public removeCard: Card ==> ()
+	removeCard(cardToRemove) == accessCards := accessCards \ {cardToRemove}
+	pre cardToRemove in set accessCards
+	and (card accessCards) > 1;
+
+end CardGroup

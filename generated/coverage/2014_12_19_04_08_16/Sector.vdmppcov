@@ -1,0 +1,66 @@
+class Sector
+/*
+	A sector can be seen as a specific area of a facility, like a room or story,
+	but also a particular resource, like a protected cabinet or vault.
+	Sectors are identified by unique IDs that double as their names.
+	
+	A sector can optionally descend from another sector, allowing different composition
+	complexities of sectors.
+*/
+
+types
+	public SectorID = seq1 of char;
+	
+instance variables
+	
+	-- This sector's id
+	public id: SectorID;
+	-- The sector this one is inserted into, if appliable
+	public parent : [Sector] := nil;
+	
+	inv ancestryIsConsistent();
+	
+	
+operations
+
+	-- Constructor that specifies a parent sector
+	public Sector: SectorID * Sector ==> Sector
+	Sector(sectorID, parentSector) == (
+		id := sectorID;
+		parent := parentSector;
+		return self
+	)
+	pre sectorID <> ""
+		and parentSector.id <> sectorID
+	post self <> parentSector;
+	
+	-- Constructs a parent-less sector
+	public Sector: SectorID ==> Sector
+	Sector(sectorID) == (
+		id := sectorID;
+		return self
+	)
+	pre sectorID <> "";
+	
+	public getID: () ==> SectorID
+	getID() == return id;
+	
+	-- Returns all ancestor sectors (parent of parent of parent...)
+	public getAncestors: () ==> set of Sector
+	getAncestors() == (
+		dcl parentSector:[Sector] := self.parent;
+		dcl ancestors: set of Sector := {};
+		
+		while(parentSector <> nil) do (
+			ancestors := ancestors union {parentSector};
+			parentSector := parentSector.parent
+		);
+		
+		return ancestors
+	);
+	
+	-- Checks if there is no ancestor of this sector that references to it
+	private ancestryIsConsistent: () ==> bool
+	ancestryIsConsistent() == return self not in set self.getAncestors();
+	
+end Sector

@@ -1,0 +1,37 @@
+class AccessRequest
+/*
+	This class represents the elements that are available in the system request log.
+	These requests are generated each time a user tries to gain access to a sector
+	and provides helpful information that can be used both to inform the user and
+	to potentially solve problems in the access system.
+*/
+
+instance variables
+	-- Time stamp of when access was requested
+	public timestamp: DateUtil`Date;
+	-- The user performing the request
+	public requestingUser: User;
+	-- Card used for the resquest
+	public cardUsed: Card;
+	-- Sector the user tried to access
+	public sector: Sector;
+	-- Access rule used by the system to allow/deny the access
+	public accessRule: AccessRule;
+	-- The result of this access request
+	public result: AccessRule`Permission;
+	
+operations
+
+	public AccessRequest: User * Card * Sector * AccessRule * AccessRule`Permission * DateUtil`Date ==> AccessRequest
+	AccessRequest(requester, accessCard, accessedSector, relatedRule, finalResult, requestDate) == (
+		requestingUser := requester;
+		cardUsed := accessCard;
+		sector := accessedSector;
+		accessRule := relatedRule;
+		result := finalResult;
+		timestamp := requestDate;
+		
+		return self;
+	);
+
+end AccessRequest

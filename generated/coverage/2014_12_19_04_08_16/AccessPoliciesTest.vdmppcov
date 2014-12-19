@@ -1,0 +1,630 @@
+class AccessPoliciesTest
+/*
+	These are the multiple coverage tests developed to ensure
+	the various implementation details work as expected.
+*/
+
+	instance variables
+		
+	operations
+		-- Simulates assertion checking by reducing it to pre-condition checking.
+		-- If 'arg' does not hold, a pre-condition violation will be signaled.
+		protected assertTrue: bool ==> ()
+		assertTrue(arg) == return pre arg;
+
+		-- Simulates assertion checking by reducing it to post-condition checking.
+		-- If values are not equal, prints a message in the console and generates
+		-- a post-conditions violation.
+		protected assertEqual: ? * ? ==> ()
+		assertEqual(expected, actual) == if expected <> actual then (
+			IO`print("Actual value (");
+			IO`print(actual);
+			IO`print(") different from expected (");
+			IO`print(expected);
+			IO`println(")\n")
+		)
+		post expected = actual;
+		
+		-- Configure expirable cards scenario
+		public configureCardsScenario: Facility * map nat to DateUtil`Date ==> set of Card
+		configureCardsScenario(facility, cardsToCreate) == (
+			dcl createdCards: set of Card:= {};
+			for all i in set dom cardsToCreate do (
+				dcl newCard: Card := facility.registerCard(cardsToCreate(i), i);
+				createdCards := createdCards union {newCard};
+			);
+			
+			return createdCards;
+		)
+		post forall id in set dom cardsToCreate &
+			(exists1 accessCard in set facility.facilityAccessCards & accessCard.id = id);
+		
+		-- Configure cards scenario
+		public configureCardsScenario: Facility * set of nat ==> set of Card
+		configureCardsScenario(facility, cardsToCreate) == (
+			dcl createdCards: set of Card:= {};
+			for all id in set cardsToCreate do (
+				dcl newCard: Card := facility.registerCard(id);
+				createdCards := createdCards union {newCard};
+			);
+			
+			return createdCards;
+		)
+		post forall id in set cardsToCreate &
+			(exists1 accessCard in set facility.facilityAccessCards & accessCard.id = id);
+			
+		-- Card removal scenario
+		public cardRemoveScenario: Facility * nat ==> ()
+		cardRemoveScenario(facility, cardID) == facility.removeCard(cardID);
+		
+		-- Configure card groups scenario
+		public configureCardGroupsScenario: Facility * map CardGroup`CardGroupName to set of Card ==> set of CardGroup
+		configureCardGroupsScenario(facility, cardGroupsInfo) == (
+			dcl createdCardGroups: set of CardGroup := {};
+			for all cardGroupName in set dom cardGroupsInfo do (
+				dcl newCardGroup: CardGroup := facility.registerCardGroup(cardGroupName, cardGroupsInfo(cardGroupName));
+				createdCardGroups := createdCardGroups union {newCardGroup};
+			);
+			
+			return createdCardGroups;
+		)
+		post forall groupName in set dom cardGroupsInfo &
+			(exists1 cardGroup in set facility.cardGroups & cardGroup.groupName = groupName);
+			
+		-- Card group removal scenario
+		public removeCardGroupScenario: Facility * set of CardGroup`CardGroupName ==> set of CardGroup
+		removeCardGroupScenario(facility, cardGroupsToRemoveNames) == (
+			dcl removedCardGroups: set of CardGroup := {};
+			for all cardGroupName in set cardGroupsToRemoveNames do (
+				dcl removedCardGroup: CardGroup := facility.removeCardGroup(cardGroupName);
+				removedCardGroups := removedCardGroups union {removedCardGroup};
+			);
+			
+			return removedCardGroups;
+		)
+		pre forall groupName in set cardGroupsToRemoveNames & (exists group in set facility.cardGroups & group.groupName = groupName); 
+		
+		-- Card removal from card group scenario (given a card id and a card group name)
+		public removeCardFromCardGroupScenario: Facility * map CardGroup`CardGroupName to set of nat ==> ()
+		removeCardFromCardGroupScenario(facility, cardsToRemoveFromGroup) == (
+			for all cardGroupName in set dom cardsToRemoveFromGroup do (
+				for all accessCard in set cardsToRemoveFromGroup(cardGroupName) do facility.removeCardFromGroup(accessCard, cardGroupName);
+			);
+		);
+		
+		-- Card addition to card group scenario (given a card id and a card group name)
+		public addCardToCardGroupScenario: Facility * CardGroup`CardGroupName * nat ==> ()
+		addCardToCardGroupScenario(facility, cardGroupName, cardID) == (
+			facility.addCardToGroup(cardID, cardGroupName);
+		);
+		
+		-- Configure users scenario with given cards
+		public configureUsersScenario: Facility * map User`UserName to (nat * Card) ==> set of User
+		configureUsersScenario(facility, usersToCreateWithCard) == (
+			dcl createdUsers: set of User := {};
+			for all userName in set dom usersToCreateWithCard do (
+				dcl newUser: User := facility.registerUser(userName, usersToCreateWithCard(userName).#1, usersToCreateWithCard(userName).#2);
+				createdUsers := createdUsers union {newUser};
+			);
+			
+			return createdUsers;
+		)
+		post RESULT subset facility.users and card RESULT = card dom usersToCreateWithCard;
+		
+		-- Configure users scenario where no card is given
+		public configureUsersScenario: Facility * set of (User`UserName * nat) ==> set of User
+		configureUsersScenario(facility, usersToCreate) == (
+			dcl createdUsers: set of User := {};
+			for all user in set usersToCreate do (
+				dcl newUser: User := facility.registerUser(user.#1, user.#2);
+				createdUsers := createdUsers union {newUser};
+			);
+			
+			return createdUsers;
+		)
+		post RESULT subset facility.users and card RESULT = card usersToCreate;
+		
+		-- Configure sectors scenario, without parents
+		public configureSectorsScenario: Facility * set of Sector`SectorID ==> set of Sector
+		configureSectorsScenario(facility, sectorIDs) == (
+			dcl createdSectors: set of Sector := {};
+			for all sectorID in set sectorIDs do (
+				dcl newSector: Sector := facility.registerSector(sectorID);
+				createdSectors := createdSectors union {newSector};
+			);
+			
+			return createdSectors;
+		)
+		post RESULT subset facility.sectors and card RESULT = card sectorIDs;
+		
+		-- Configure sectors scenario with parents
+		public configureSectorsScenario: Facility * set of (Sector`SectorID * Sector) ==> set of Sector
+		configureSectorsScenario(facility, sectorIDsAndParents) == (
+			dcl createdSectors: set of Sector := {};
+			for all sectorInfo in set sectorIDsAndParents do (
+				dcl newSector: Sector := facility.registerSector(sectorInfo.#1, sectorInfo.#2);
+				createdSectors := createdSectors union {newSector};
+			);
+			
+			return createdSectors;
+		)
+		post RESULT subset facility.sectors and card RESULT = card sectorIDsAndParents;
+		
+		-- Configure sector groups scenario
+		public configureSectorGroupsScenario: Facility * set of (SectorGroup`SectorGroupName * set of Sector) ==> set of SectorGroup
+		configureSectorGroupsScenario(facility, sectorGroupNamesAndMembers) == (
+			dcl createdSectorGroups: set of SectorGroup := {};
+			for all sectorGroupInfo in set sectorGroupNamesAndMembers do (
+				dcl newSectorGroup: SectorGroup := facility.registerSectorGroup(sectorGroupInfo.#1, sectorGroupInfo.#2);
+				createdSectorGroups := createdSectorGroups union {newSectorGroup};
+			);
+			
+			return createdSectorGroups;
+		)
+		post RESULT subset facility.sectorGroups and card RESULT = card sectorGroupNamesAndMembers;
+		
+		-- Add sectors to a sector group scenario
+		-- Sector group with given name must exist
+		public addSectorsToSectorGroupScenario: Facility * SectorGroup`SectorGroupName * set of Sector ==> ()
+		addSectorsToSectorGroupScenario(facility, groupName, sectorsToAdd) == (
+			for all sector in set sectorsToAdd do facility.addSectorToGroup(sector.id, groupName);
+		);
+		
+		-- Ask for access scenario
+		-- TODO
+		
+		-- Tests a successful configuration of access cards, card groups and users.
+		-- Includes creation, modification and deletion of several instances.
+		public testSuccessfulAccessCardAndUserConfiguration: Facility ==> ()
+		testSuccessfulAccessCardAndUserConfiguration(facility) == (
+			dcl expirableCardsToCreate: map nat to DateUtil`Date := {
+				0 |-> mk_DateUtil`Date(2014, 12, 18, 23, 55),
+				1 |-> mk_DateUtil`Date(2014, 12, 17, 23, 55),
+				2 |-> mk_DateUtil`Date(2014, 12, 16, 23, 55),
+				3 |-> mk_DateUtil`Date(2014, 12, 15, 23, 55),
+				4 |-> mk_DateUtil`Date(2014, 12, 14, 23, 55)
+			};
+			
+			dcl normalCardsToCreate: set of nat := {5, 6, 7, 8, 9};
+			
+			dcl cardThatWillBeDeleted1: set of nat := {10};
+			dcl cardThatWillBeDeleted2: set of nat := {11};
+			dcl cardThatWillBeRemovedFromGroup: set of nat := {12};
+			
+			-- Register cards with a predefined expiration date
+			dcl createdExpirableCards: set of Card := configureCardsScenario(facility, expirableCardsToCreate);
+			
+			-- Register cards without expiration date
+			dcl createdNormalCards: set of Card := configureCardsScenario(facility, normalCardsToCreate);
+			
+			-- Register cards for future removal
+			dcl cardToRemove1: set of Card := configureCardsScenario(facility, cardThatWillBeDeleted1);
+			dcl cardToRemove2: set of Card := configureCardsScenario(facility, cardThatWillBeDeleted2);
+			
+			-- Register cards for future removal from group (not from the facility)
+			dcl cardToRemoveFromGroup: set of Card := configureCardsScenario(facility, cardThatWillBeRemovedFromGroup);
+			
+			dcl cardGroupsToCreate: map CardGroup`CardGroupName to set of Card := {
+				"staff" |-> createdNormalCards,
+				"students" |-> createdExpirableCards,
+				"removalByCardDeletion" |-> cardToRemove1 union cardToRemove2 union cardToRemoveFromGroup,
+				"removalByCardDeletionWithCardIDAndGroupName" |-> cardToRemoveFromGroup,
+				"manualRemoval" |-> cardToRemove2
+			};
+			
+			-- Register card groups
+			dcl staffCardGroup: set of CardGroup := configureCardGroupsScenario(facility, cardGroupsToCreate);
+			
+			-- Register cards to use with users
+			dcl staffCard1: Card := facility.registerCard(13);
+			dcl staffCard2: Card := facility.registerCard(14);
+			dcl staffCard3: Card := facility.registerCard(15);
+			
+			dcl studentCard1: Card := facility.registerCard(mk_DateUtil`Date(2014, 12, 22, 23, 55), 16);
+			dcl studentCard2: Card := facility.registerCard(mk_DateUtil`Date(2014, 12, 23, 23, 55), 17);
+			dcl studentCard3: Card := facility.registerCard(mk_DateUtil`Date(2014, 12, 24, 23, 55), 18);
+			
+			dcl staffUsersToCreate: map User`UserName to (nat * Card) := { "staff1" |-> mk_(0, staffCard1),
+				"staff2" |-> mk_(1, staffCard2),
+				"staff3" |-> mk_(2, staffCard3) };
+				
+			dcl studentUsersToCreate: set of (User`UserName * nat) := { mk_("student1", 3), mk_("student2", 4), mk_("student3", 5)};
+			
+			-- Assert that the right number of cards were created
+			assertEqual(card createdExpirableCards, card dom expirableCardsToCreate);
+			assertEqual(card createdNormalCards, card normalCardsToCreate);
+			
+			-- Register staff users (with unexpirable cards)
+			let staffUsers = configureUsersScenario(facility, staffUsersToCreate)
+				in assertTrue(staffUsers subset facility.users);
+				
+			-- Register student users (without cards) and add cards later
+			let studentUsers = configureUsersScenario(facility, studentUsersToCreate) in (
+				dcl studentCardSequence: seq of Card := [studentCard1, studentCard2, studentCard3];
+				assertTrue(studentUsers subset facility.users);
+				
+				-- Allocate cards to users
+				for all student in set studentUsers do (
+					facility.allocateCard(student, hd studentCardSequence);
+					studentCardSequence := tl studentCardSequence;
+				);
+				
+				-- Remove a card belonging to one of the users
+				facility.removeCard(studentCard1);
+				assertTrue(not exists user in set facility.users & user.accessCard = studentCard1);
+				
+				-- Exchange cards between two users
+				let student2 = facility.getUserWithCard(17),
+						student3 = facility.getUserWithCard(18) in (
+						student3.removeAccessCard();
+						facility.allocateCard(student2.id, 18);
+						facility.allocateCard(student3.id, 17);
+						
+						assertTrue(student2.accessCard = studentCard3);
+						assertTrue(student3.accessCard = studentCard2);
+				);
+				
+				-- Create two users and remove them
+				let userToRemove1 = facility.registerUser("removeMe1", 6),
+					userToRemove2 = facility.registerUser("removeMe2", 7) in (
+					facility.removeUser(userToRemove1);
+					facility.removeUser(userToRemove2.id);
+					
+					assertTrue(userToRemove1 not in set facility.users);
+					assertTrue(userToRemove2 not in set facility.users);
+				);
+			);
+			
+			-- Assert that the card groups were created and belong in the facility's card group sector
+			assertTrue(staffCardGroup subset facility.cardGroups); 
+			
+			-- Remove a card from the group, given the card id and the group name. This should leave the "removalByCardDeletion" group with only 1 card left.
+			removeCardFromCardGroupScenario(facility, { "removalByCardDeletion" |-> cardThatWillBeRemovedFromGroup });
+			assertTrue(not exists group in set facility.cardGroups & (group.groupName = "removalByCardDeletion" and cardToRemoveFromGroup subset group.accessCards));
+			
+			-- Remove a card from the group, given the card id and the group name.
+			-- This should cause the deletion of the "removalByCardDeletionWithCardIDAndGroupName" card group, since it had 1 card left
+			removeCardFromCardGroupScenario(facility, { "removalByCardDeletionWithCardIDAndGroupName" |-> cardThatWillBeRemovedFromGroup });
+			assertTrue(not exists group in set facility.cardGroups & (group.groupName = "removalByCardDeletionWithCardIDAndGroupName")); 
+			
+			-- Remove the sector group "manualRemoval" and check if it really was removed
+			let removedCardGroups = removeCardGroupScenario(facility, {"manualRemoval"}) in assertTrue(not exists cardGroup in set removedCardGroups & cardGroup in set facility.cardGroups);
+			assertTrue(not exists group in set facility.cardGroups & group.groupName = "manualRemoval");
+			
+			-- Remove a card. This should leave the "removalByCardDeletion" card group with 1 card left
+			cardRemoveScenario(facility, 11);
+			assertTrue(not exists accessCard in set facility.facilityAccessCards & accessCard.id = 11);
+			assertTrue(not exists group in set facility.cardGroups & (group.groupName = "removalByCardDeletion" and cardToRemove2 subset group.accessCards));
+			
+			-- Remove a card. This should also remove the "removalByCardDeletion" card group, since it was the only card left
+			cardRemoveScenario(facility, 10);
+			assertTrue(not exists accessCard in set facility.facilityAccessCards & accessCard.id = 10);
+			assertTrue(not exists group in set facility.cardGroups & group.groupName = "removalByCardDeletion");
+			
+			-- Manually add a card to a group
+			addCardToCardGroupScenario(facility, "staff", 12);
+			addCardToCardGroupScenario(facility, "staff", 13);
+			addCardToCardGroupScenario(facility, "staff", 14);
+			addCardToCardGroupScenario(facility, "staff", 15);
+			addCardToCardGroupScenario(facility, "students", 17);
+			addCardToCardGroupScenario(facility, "students", 18);
+		);
+		
+		-- Tests a successful configuration of sector and sector groups, including creation, modification and deletion
+		public testSuccessfulSectorConfiguration: Facility ==> ()
+		testSuccessfulSectorConfiguration(facility) == (
+			-- Create a few parent/main sectors
+			let mainSectors = configureSectorsScenario(facility, {"classBuilding", "auditorium", "secretariate", "boardRoom", "garage"}) in (
+				assertTrue(mainSectors subset facility.sectors);
+			);
+			
+			-- Here we create some sectors that are children of the main sectors, including some that are children of children.
+			let childSectors = configureSectorsScenario(facility, {
+				mk_("classRoom1", facility.getSectorByID("classBuilding")),
+				mk_("classRoom2", facility.getSectorByID("classBuilding")),
+				mk_("classRoom3", facility.getSectorByID("classBuilding")),
+				mk_("laboratory1", facility.getSectorByID("classBuilding"))
+			}) union configureSectorsScenario(facility, {
+				mk_("chemicalCloset", facility.getSectorByID("laboratory1")),
+				mk_("computer1", facility.getSectorByID("classRoom1")),
+				mk_("parkingSpace1", facility.getSectorByID("garage")),
+				mk_("parkingSpace2", facility.getSectorByID("garage")),
+				mk_("parkingSpace3", facility.getSectorByID("garage"))
+			}) in (
+				assertTrue(childSectors subset facility.sectors);
+				assertTrue(facility.getSectorByID("parkingSpace1").parent = facility.getSectorByID("garage"));
+				assertTrue(facility.getSectorByID("parkingSpace2").parent = facility.getSectorByID("garage"));
+				assertTrue(facility.getSectorByID("parkingSpace3").parent = facility.getSectorByID("garage"));
+				assertTrue(facility.getSectorByID("computer1").parent = facility.getSectorByID("classRoom1"));
+				assertTrue(facility.getSectorByID("laboratory1").parent = facility.getSectorByID("classBuilding"));
+				assertTrue(facility.getSectorByID("chemicalCloset").parent = facility.getSectorByID("laboratory1"));
+				assertTrue(facility.getSectorByID("classRoom3").parent = facility.getSectorByID("classBuilding"));
+				assertTrue(facility.getSectorByID("classRoom2").parent = facility.getSectorByID("classBuilding"));
+				assertTrue(facility.getSectorByID("classRoom1").parent = facility.getSectorByID("classBuilding"));
+			);
+		
+			-- Here we remove a sector with children and check if everything was removed
+			facility.removeSectorByID("garage");
+			assertTrue(not exists sector in set facility.sectors & sector.id = "garage");
+			assertTrue(not exists sector in set facility.sectors & sector.id = "parkingSpace1");
+			assertTrue(not exists sector in set facility.sectors & sector.id = "parkingSpace2");
+			assertTrue(not exists sector in set facility.sectors & sector.id = "parkingSpace3");
+			
+			-- Add sector groups
+			let sectorGroups = configureSectorGroupsScenario(facility, {
+				mk_("teachingAreas", {facility.getSectorByID("classBuilding"), facility.getSectorByID("auditorium"), facility.getSectorByID("boardRoom")}),
+				mk_("administrativeAreas", {facility.getSectorByID("secretariate"), facility.getSectorByID("boardRoom")})
+			}) in (
+				assertTrue(sectorGroups subset facility.sectorGroups);
+			);
+			
+			-- Add more sectors to a sector group
+			addSectorsToSectorGroupScenario(facility, "teachingAreas", {
+				facility.getSectorByID("classRoom1"),
+				facility.getSectorByID("classRoom2"),
+				facility.getSectorByID("classRoom3"),
+				facility.getSectorByID("laboratory1"),
+				facility.getSectorByID("chemicalCloset")
+			});
+			
+			-- Remove sectors from a sector group until it has no remaining sectors and is deleted. This version uses SectorGroup and Sector objects
+			let sectorGroupToRemove = configureSectorGroupsScenario(facility, {mk_("sectorGroupToRemove",
+				{facility.getSectorByID("classRoom1"), facility.getSectorByID("classRoom2")})})
+				in (
+					-- Remove a sector, group should still have one left
+					facility.removeSectorFromGroup(facility.getSectorByID("classRoom1"), facility.getSectorGroupByName("sectorGroupToRemove"));
+					assertTrue(not facility.getSectorGroupByName("sectorGroupToRemove").containsSector(facility.getSectorByID("classRoom1")));
+					assertTrue(facility.getSectorGroupByName("sectorGroupToRemove") in set facility.sectorGroups);
+					
+					-- Remove another sector, group should be deleted since it has no sectors left
+					facility.removeSectorFromGroup(facility.getSectorByID("classRoom2"), facility.getSectorGroupByName("sectorGroupToRemove"));
+					assertTrue(not exists sectorGroup in set facility.sectorGroups & sectorGroup.groupName = "sectorGroupToRemove");
+				);
+				
+				-- Remove sectors from a sector group until it has no remaining sectors and is deleted. This version uses SectorGroupName and SectorID
+				let sectorGroupToRemove = configureSectorGroupsScenario(facility, {mk_("sectorGroupToRemove",
+				{facility.getSectorByID("classRoom1"), facility.getSectorByID("classRoom2")})})
+				in (
+					-- Remove a sector, group should still have one left
+					facility.removeSectorFromGroup("classRoom1", "sectorGroupToRemove");
+					assertTrue(not facility.getSectorGroupByName("sectorGroupToRemove").containsSector(facility.getSectorByID("classRoom1")));
+					assertTrue(facility.getSectorGroupByName("sectorGroupToRemove") in set facility.sectorGroups);
+					
+					-- Remove another sector, group should be deleted since it has no sectors left
+					facility.removeSectorFromGroup("classRoom2", "sectorGroupToRemove");
+					assertTrue(not exists sectorGroup in set facility.sectorGroups & sectorGroup.groupName = "sectorGroupToRemove");
+				);
+				
+				-- Remove a sector from all groups
+				facility.removeSectorFromAllGroups(facility.getSectorByID("boardRoom"));
+				assertTrue(forall sectorGroup in set facility.sectorGroups & (facility.getSectorByID("boardRoom") not in set sectorGroup.sectors));
+		);
+		
+		-- Test a successful configuration of several access rules. Includes removal of rules as well.
+		-- NOTE: Assumes that the previous tests were run in order to have some data already created for the given facility.
+		public testSuccessfulAccessRuleConfiguration: Facility ==> ()
+		testSuccessfulAccessRuleConfiguration(facility) == (
+			-- Create CARD GROUP -> SECTOR GROUP rule: Students have access to teaching areas
+			dcl rule1: AccessRule := facility.registerAccessRule(true, 0, "students", "teachingAreas", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 14, 23, 55), nil);
+			
+			-- Create CARD GROUP -> SECTOR GROUP rule: Staff members have access to teatching areas and administrative areas
+			dcl rule2: AccessRule := facility.registerAccessRule(true, 1, "staff", "teachingAreas", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 14, 23, 55), nil);
+			dcl rule3: AccessRule := facility.registerAccessRule(true, 2, "staff", "administrativeAreas", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 14, 23, 55), nil);
+			
+			-- Create ACCESS CARD -> SECTOR rule: John Doe's card has access to laboratory 1
+			dcl johnDoe: User := facility.registerUser("johnDoe", 6, facility.registerCard(19));
+			dcl rule4: AccessRule := facility.registerAccessRule(false, 3, johnDoe.accessCard.id, "laboratory1", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 14, 23, 55), nil);
+			
+			-- Create CARD GROUP -> SECTOR rule (temporary rule exception): Students are temporarily allowed access to classroom 2 (should contradict and be overrided by previous rule)
+			dcl rule8: AccessRule := facility.registerAccessRule(false, 7, "students", "classRoom2", <ALLOW>, 2, mk_DateUtil`Date(2014, 12, 14, 23, 55), mk_DateUtil`Date(2014, 12, 20, 23, 55));
+			
+			-- Create CARD GROUP -> SECTOR rule (temporary rule exception): Students are temporarily denied access to classroom 2
+			dcl rule5: AccessRule := facility.registerAccessRule(false, 4, "students", "classRoom2", <DENY>, 2, mk_DateUtil`Date(2014, 12, 14, 23, 55), mk_DateUtil`Date(2014, 12, 20, 23, 55));
+			
+			-- Create ACCESS CARD -> SECTOR GROUP rule: Government auditor's card has access to administrative areas
+			dcl auditor: User := facility.registerUser("auditor", 7, facility.registerCard(20));
+			dcl rule6: AccessRule := facility.registerAccessRule(true, 5, auditor.accessCard.id, "administrativeAreas", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 14, 23, 55), nil);
+			
+			-- Create an arbitrary rule to be removed
+			dcl rule7: AccessRule := facility.registerAccessRule(true, 6, 20, "administrativeAreas", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 14, 23, 55), nil);
+			
+			-- Check all rules are there
+			assertTrue(rule1 in set facility.facilityAccessRules);
+			assertTrue(rule2 in set facility.facilityAccessRules);
+			assertTrue(rule3 in set facility.facilityAccessRules);
+			assertTrue(rule4 in set facility.facilityAccessRules);
+			assertTrue(rule5 in set facility.facilityAccessRules);
+			assertTrue(rule6 in set facility.facilityAccessRules);
+			assertTrue(rule7 in set facility.facilityAccessRules);
+			assertTrue(rule8 in set facility.facilityAccessRules);
+			
+			-- Remove a rule
+			let removedRule = facility.removeAccessRule(rule7.id) in
+				-- Check removed rule isn't anymore
+				assertTrue(removedRule not in set facility.facilityAccessRules);
+		);
+		
+		-- Test successful access requests to the facility (successful doesn't mean <ALLOW>, means it agrees with pre and post conditions and returns a valid result).
+		-- Also tests if logging occurs correctly.
+		-- NOTE: This test must be run last to ensure all variables are initialized.
+		public testAccessRequests: Facility ==> ()
+		testAccessRequests(facility) == (
+			-- Test staff access request to secretariate (should be allowed)
+			let result = facility.requestAccess(facility.getUserByID(0), facility.getSectorByID("secretariate"), mk_DateUtil`Date(2014, 12, 15, 23, 55)) in ( 
+				assertTrue(result.#1 = <ALLOW>);
+				-- Verify if logging is correct
+				assertTrue(result.#2.timestamp = mk_DateUtil`Date(2014, 12, 15, 23, 55));
+				assertTrue(result.#2.requestingUser = facility.getUserByID(0));
+				assertTrue(result.#2.cardUsed = facility.getUserByID(0).accessCard);
+				assertTrue(result.#2.sector = facility.getSectorByID("secretariate"));
+				assertTrue(result.#2.accessRule = facility.getAccessRuleByID(2));
+				assertTrue(result.#2.result = <ALLOW>);
+				assertTrue(result.#2 in set facility.accessLog);
+			);
+			
+			-- Test student access request to classroom 1 (should be allowed)
+			let result = facility.requestAccess(facility.getUserByID(4), facility.getSectorByID("classRoom1"), mk_DateUtil`Date(2014, 12, 15, 23, 55)) in ( 
+				assertTrue(result.#1 = <ALLOW>);
+				-- Verify if logging is correct
+				assertTrue(result.#2.timestamp = mk_DateUtil`Date(2014, 12, 15, 23, 55));
+				assertTrue(result.#2.requestingUser = facility.getUserByID(4));
+				assertTrue(result.#2.cardUsed = facility.getUserByID(4).accessCard);
+				assertTrue(result.#2.sector = facility.getSectorByID("classRoom1"));
+				assertTrue(result.#2.accessRule = facility.getAccessRuleByID(0));
+				assertTrue(result.#2.result = <ALLOW>);
+				assertTrue(result.#2 in set facility.accessLog);
+			);
+			
+			-- Test John Doe's access to laboratory 1 (should be allowed)
+			let result = facility.requestAccess(facility.getUserByID(6), facility.getSectorByID("laboratory1"), mk_DateUtil`Date(2014, 12, 15, 23, 55)) in ( 
+				assertTrue(result.#1 = <ALLOW>);
+				-- Verify if logging is correct
+				assertTrue(result.#2.timestamp = mk_DateUtil`Date(2014, 12, 15, 23, 55));
+				assertTrue(result.#2.requestingUser = facility.getUserByID(6));
+				assertTrue(result.#2.cardUsed = facility.getUserByID(6).accessCard);
+				assertTrue(result.#2.sector = facility.getSectorByID("laboratory1"));
+				assertTrue(result.#2.accessRule = facility.getAccessRuleByID(3));
+				assertTrue(result.#2.result = <ALLOW>);
+				assertTrue(result.#2 in set facility.accessLog);
+			);
+			
+			-- Test John Doe's access to classBuilding (should have access because has access to a child of the sector)
+			let result = facility.requestAccess(facility.getUserByID(6), facility.getSectorByID("classBuilding"), mk_DateUtil`Date(2014, 12, 15, 23, 55)) in ( 
+				assertTrue(result.#1 = <ALLOW>);
+				-- Verify if logging is correct
+				assertTrue(result.#2.timestamp = mk_DateUtil`Date(2014, 12, 15, 23, 55));
+				assertTrue(result.#2.requestingUser = facility.getUserByID(6));
+				assertTrue(result.#2.cardUsed = facility.getUserByID(6).accessCard);
+				assertTrue(result.#2.sector = facility.getSectorByID("classBuilding"));
+				assertTrue(result.#2.accessRule = facility.getAccessRuleByID(3));
+				assertTrue(result.#2.result = <ALLOW>);
+				assertTrue(result.#2 in set facility.accessLog);
+			);
+			
+			-- Test student access to classroom 2 (should be denied)
+			let result = facility.requestAccess(facility.getUserByID(4), facility.getSectorByID("classRoom2"), mk_DateUtil`Date(2014, 12, 15, 23, 55)) in ( 
+				assertTrue(result.#1 = <DENY>);
+				-- Verify if logging is correct
+				assertTrue(result.#2.timestamp = mk_DateUtil`Date(2014, 12, 15, 23, 55));
+				assertTrue(result.#2.requestingUser = facility.getUserByID(4));
+				assertTrue(result.#2.cardUsed = facility.getUserByID(4).accessCard);
+				assertTrue(result.#2.sector = facility.getSectorByID("classRoom2"));
+				assertTrue(result.#2.accessRule = facility.getAccessRuleByID(4));
+				assertTrue(result.#2.result = <DENY>);
+				assertTrue(result.#2 in set facility.accessLog);
+			);
+			
+			-- Test student access to classroom 2 after rule date of expiration (should be allowed)
+			let result = facility.requestAccess(facility.getUserByID(4), facility.getSectorByID("classRoom2"), mk_DateUtil`Date(2014, 12, 21, 23, 55)) in ( 
+				assertTrue(result.#1 = <ALLOW>);
+				-- Verify if logging is correct
+				assertTrue(result.#2.timestamp = mk_DateUtil`Date(2014, 12, 21, 23, 55));
+				assertTrue(result.#2.requestingUser = facility.getUserByID(4));
+				assertTrue(result.#2.cardUsed = facility.getUserByID(4).accessCard);
+				assertTrue(result.#2.sector = facility.getSectorByID("classRoom2"));
+				assertTrue(result.#2.accessRule = facility.getAccessRuleByID(0));
+				assertTrue(result.#2.result = <ALLOW>);
+				assertTrue(result.#2 in set facility.accessLog);
+			);
+			
+			-- Test student access to classroom 1 after card expiration (should be denied)
+			let result = facility.requestAccess(facility.getUserByID(4), facility.getSectorByID("classRoom1"), mk_DateUtil`Date(2014, 12, 31, 23, 55)) in ( 
+				assertTrue(result.#1 = <DENY>);
+				-- Verify if logging is correct
+				assertTrue(result.#2.timestamp = mk_DateUtil`Date(2014, 12, 31, 23, 55));
+				assertTrue(result.#2.requestingUser = facility.getUserByID(4));
+				assertTrue(result.#2.cardUsed = facility.getUserByID(4).accessCard);
+				assertTrue(result.#2.sector = facility.getSectorByID("classRoom1"));
+				assertTrue(result.#2.accessRule = facility.getAccessRuleByID(0));
+				assertTrue(result.#2.result = <DENY>);
+				assertTrue(result.#2 in set facility.accessLog);
+			);
+			
+			-- Test auditor's access to secretariate (should be allowed)
+			let result = facility.requestAccess(facility.getUserByID(7), facility.getSectorByID("secretariate"), mk_DateUtil`Date(2014, 12, 15, 23, 55)) in ( 
+				assertTrue(result.#1 = <ALLOW>);
+				-- Verify if logging is correct
+				assertTrue(result.#2.timestamp = mk_DateUtil`Date(2014, 12, 15, 23, 55));
+				assertTrue(result.#2.requestingUser = facility.getUserByID(7));
+				assertTrue(result.#2.cardUsed = facility.getUserByID(7).accessCard);
+				assertTrue(result.#2.sector = facility.getSectorByID("secretariate"));
+				assertTrue(result.#2.accessRule = facility.getAccessRuleByID(5));
+				assertTrue(result.#2.result = <ALLOW>);
+				assertTrue(result.#2 in set facility.accessLog);
+			);
+		);
+		
+		-- Removes cards, card groups, sectors and sectors groups to test if the corresponding rules are automatically removed
+		public testElementRemovalThatCausesAccessRuleRemoval: Facility ==> ()
+		testElementRemovalThatCausesAccessRuleRemoval(facility) == (
+			
+			-- Remove a sector in use by rule 4 (id #3)
+			facility.removeSectorByID("laboratory1");
+			assertTrue(not exists rule in set facility.facilityAccessRules & rule.id = 3); 
+			
+			-- Remove a sector group in use by rule 1 (id #0)
+			let removedGroup = facility.removeSectorGroup("teachingAreas") in (
+				assertTrue(not exists rule in set facility.facilityAccessRules & rule.id = 0);
+			);
+			
+			-- Remove a card in use by rule 6 (id #5)
+			facility.removeCard(20);
+			assertTrue(not exists rule in set facility.facilityAccessRules & rule.id = 0);
+			
+			-- Remove a card group in use by rule 2 (id #1)
+			let removedGroup = facility.removeCardGroup("staff") in (
+				assertTrue(not exists rule in set facility.facilityAccessRules & rule.id = 1);
+			);
+		); 
+		
+		-- Entry point to run tests
+		public static testAll: () ==> ()
+		testAll() == (
+			dcl school : Facility := new Facility("school");
+			dcl test: AccessPoliciesTest := new AccessPoliciesTest();
+			
+			test.testSuccessfulSectorConfiguration(school);
+			test.testSuccessfulAccessCardAndUserConfiguration(school);
+			test.testSuccessfulAccessRuleConfiguration(school);
+			test.testAccessRequests(school);
+			test.testElementRemovalThatCausesAccessRuleRemoval(school);
+			
+		);
+		
+		-- Tests with invalid inputs / results
+		-- These tests assure that the most critical safety requirements are preserved in case of erroneous usage
+		-- Not all pre/post conditions and invariants are contempled, just some encompassing examples
+		-- NOTE: Run one at the time
+		
+		-- This test breaks the no two cards with same id safety requirement
+		public testFailedCardConfiguration: Facility ==> ()
+		testFailedCardConfiguration(facility) == (
+			dcl cards1: set of Card := configureCardsScenario(facility, {8});
+			dcl cards2: set of Card := configureCardsScenario(facility, {8});
+			return;
+		);
+		
+		-- This test breaks the no two sectors with same id safety requirement
+		public testFailedSectorConfiguration: Facility ==> ()
+		testFailedSectorConfiguration(facility) == (
+			dcl sector1: set of Sector := configureSectorsScenario(facility, {"sector"});
+			dcl sector2: set of Sector := configureSectorsScenario(facility, {"sector"});
+			return;
+		);
+		
+		-- This test breaks the condition of no sector groups with empty names or empty sector set
+		public testFailedSectorGroupConfiguration: Facility ==> ()
+		testFailedSectorGroupConfiguration(facility) == (
+			dcl sectorGroup: SectorGroup := facility.registerSectorGroup("", {});
+			return;
+		);
+		
+		-- This test fails to create a valid rule due to using several invalid parameters
+		public testFailedAccessRuleConfiguration: Facility ==> ()
+		testFailedAccessRuleConfiguration(facility) == (
+			dcl rule: AccessRule := facility.registerAccessRule(false, 0, "thisDoesntExist", "neitherDoesThis", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 15, 23, 55), nil);
+			return;
+		);
+		
+
+end AccessPoliciesTest

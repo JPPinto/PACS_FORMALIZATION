@@ -1,0 +1,38 @@
+class Card
+/*
+	This class represents the access card used to gain access to a facility sector.
+	Cards are unique, in the sense that there's only one copy of the physical card.
+	There can be no two cards with the same id. A card can have a date of expiration.
+*/
+
+instance variables
+
+	public id : nat;
+	public dateOfExpiration : [DateUtil`Date] := nil;
+	
+operations
+
+	-- Create a new card specifying the date of expiration
+	public Card: DateUtil`Date * nat ==> Card
+	Card(doe, cardID) == (
+		id := cardID;
+		dateOfExpiration := doe;
+		
+		return self;
+	);
+	
+	-- Create a new card without specifying the date of expiration
+	public Card: nat ==> Card
+	Card(cardID) == (
+		id := cardID;
+		
+		return self;
+	);
+	
+	public getID: () ==> nat
+	getID() == return id;
+	
+	public isExpired: DateUtil`Date ==> bool
+	isExpired(currentDate) == return if dateOfExpiration <> nil then DateUtil`isAfter(currentDate, dateOfExpiration) else false;
+
+end Card

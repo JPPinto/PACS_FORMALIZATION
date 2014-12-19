@@ -1,0 +1,52 @@
+class User
+/*
+	This class represents a user in the system.
+	A user is more of a "label" to the current holder of a card.
+	No two users can hold the same card, not can they have the same id.
+*/
+
+
+types
+	public UserName = seq1 of char;
+	
+instance variables
+	
+	public id: nat;
+	public name: UserName;
+	public accessCard: [Card] := nil;
+	
+operations
+
+	-- Create a new user specifying a card
+	public User: UserName * nat * Card ==> User
+	User(userName, userID, userAccessCard) == (
+		id := userID;
+		name := userName;
+		accessCard := userAccessCard;
+		
+		return self
+	);
+	
+	-- Create a new user without specifying a card
+	public User: UserName * nat ==> User
+	User(userName, userID) == (
+		id := userID;
+		name := userName;
+		
+		return self
+	);
+	
+	public getID: () ==> nat
+	getID() == return id;
+	
+	public getAccessCard: () ==> [Card]
+	getAccessCard() == return accessCard;
+	
+	-- Set a new access card. Pre condition prevents adding an access card another user is already using.
+	public setAcessCard: Card ==> ()
+	setAcessCard(newAccessCard) == accessCard := newAccessCard;
+	
+	public removeAccessCard: () ==> ()
+	removeAccessCard() == accessCard := nil;
+
+end User
