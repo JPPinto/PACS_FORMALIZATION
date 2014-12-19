@@ -578,18 +578,47 @@ class AccessPoliciesTest
 		testAll() == (
 			dcl school : Facility := new Facility("school");
 			dcl test: AccessPoliciesTest := new AccessPoliciesTest();
+			
 			test.testSuccessfulSectorConfiguration(school);
 			test.testSuccessfulAccessCardAndUserConfiguration(school);
 			test.testSuccessfulAccessRuleConfiguration(school);
 			test.testAccessRequests(school);
 			test.testElementRemovalThatCausesAccessRuleRemoval(school);
+			
 		);
+		
+		-- Tests with invalid inputs / results
+		-- These tests assure that the most critical safety requirements are preserved in case of erroneous usage
+		-- Not all pre/post conditions and invariants are contempled, just some encompassing examples
+		-- NOTE: Run one at the time
 		
 		-- This test breaks the no two cards with same id safety requirement
 		public testFailedCardConfiguration: Facility ==> ()
 		testFailedCardConfiguration(facility) == (
 			dcl cards1: set of Card := configureCardsScenario(facility, {8});
 			dcl cards2: set of Card := configureCardsScenario(facility, {8});
+			return;
+		);
+		
+		-- This test breaks the no two sectors with same id safety requirement
+		public testFailedSectorConfiguration: Facility ==> ()
+		testFailedSectorConfiguration(facility) == (
+			dcl sector1: set of Sector := configureSectorsScenario(facility, {"sector"});
+			dcl sector2: set of Sector := configureSectorsScenario(facility, {"sector"});
+			return;
+		);
+		
+		-- This test breaks the condition of no sector groups with empty names or empty sector set
+		public testFailedSectorGroupConfiguration: Facility ==> ()
+		testFailedSectorGroupConfiguration(facility) == (
+			dcl sectorGroup: SectorGroup := facility.registerSectorGroup("", {});
+			return;
+		);
+		
+		-- This test fails to create a valid rule due to using several invalid parameters
+		public testFailedAccessRuleConfiguration: Facility ==> ()
+		testFailedAccessRuleConfiguration(facility) == (
+			dcl rule: AccessRule := facility.registerAccessRule(false, 0, "thisDoesntExist", "neitherDoesThis", <ALLOW>, 1, mk_DateUtil`Date(2014, 12, 15, 23, 55), nil);
 			return;
 		);
 		
