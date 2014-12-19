@@ -434,7 +434,13 @@ class AccessPoliciesTest
 			let removedRule = facility.removeAccessRule(rule7.id) in
 				-- Check removed rule isn't anymore
 				assertTrue(removedRule not in set facility.facilityAccessRules);
-			
+		);
+		
+		-- Test successful access requests to the facility (successful doesn't mean <ALLOW>, means it agrees with pre and post conditions and returns a valid result).
+		-- Also tests if logging occurs correctly.
+		-- NOTE: This test must be run last to ensure all variables are initialized.
+		public testAccessRequests: Facility ==> ()
+		testAccessRequests(facility) == (
 			-- Test staff access request to secretariate (should be allowed)
 			let result = facility.requestAccess(facility.getUserByID(0), facility.getSectorByID("secretariate"), mk_DateUtil`Date(2014, 12, 15, 23, 55)) in ( 
 				assertTrue(result.#1 = <ALLOW>);
@@ -443,7 +449,7 @@ class AccessPoliciesTest
 				assertTrue(result.#2.requestingUser = facility.getUserByID(0));
 				assertTrue(result.#2.cardUsed = facility.getUserByID(0).accessCard);
 				assertTrue(result.#2.sector = facility.getSectorByID("secretariate"));
-				assertTrue(result.#2.accessRule = rule3);
+				assertTrue(result.#2.accessRule = facility.getAccessRuleByID(2));
 				assertTrue(result.#2.result = <ALLOW>);
 				assertTrue(result.#2 in set facility.accessLog);
 			);
@@ -456,7 +462,7 @@ class AccessPoliciesTest
 				assertTrue(result.#2.requestingUser = facility.getUserByID(4));
 				assertTrue(result.#2.cardUsed = facility.getUserByID(4).accessCard);
 				assertTrue(result.#2.sector = facility.getSectorByID("classRoom1"));
-				assertTrue(result.#2.accessRule = rule1);
+				assertTrue(result.#2.accessRule = facility.getAccessRuleByID(0));
 				assertTrue(result.#2.result = <ALLOW>);
 				assertTrue(result.#2 in set facility.accessLog);
 			);
@@ -469,7 +475,7 @@ class AccessPoliciesTest
 				assertTrue(result.#2.requestingUser = facility.getUserByID(6));
 				assertTrue(result.#2.cardUsed = facility.getUserByID(6).accessCard);
 				assertTrue(result.#2.sector = facility.getSectorByID("laboratory1"));
-				assertTrue(result.#2.accessRule = rule4);
+				assertTrue(result.#2.accessRule = facility.getAccessRuleByID(3));
 				assertTrue(result.#2.result = <ALLOW>);
 				assertTrue(result.#2 in set facility.accessLog);
 			);
@@ -482,7 +488,7 @@ class AccessPoliciesTest
 				assertTrue(result.#2.requestingUser = facility.getUserByID(6));
 				assertTrue(result.#2.cardUsed = facility.getUserByID(6).accessCard);
 				assertTrue(result.#2.sector = facility.getSectorByID("classBuilding"));
-				assertTrue(result.#2.accessRule = rule4);
+				assertTrue(result.#2.accessRule = facility.getAccessRuleByID(3));
 				assertTrue(result.#2.result = <ALLOW>);
 				assertTrue(result.#2 in set facility.accessLog);
 			);
@@ -495,7 +501,7 @@ class AccessPoliciesTest
 				assertTrue(result.#2.requestingUser = facility.getUserByID(4));
 				assertTrue(result.#2.cardUsed = facility.getUserByID(4).accessCard);
 				assertTrue(result.#2.sector = facility.getSectorByID("classRoom2"));
-				assertTrue(result.#2.accessRule = rule5);
+				assertTrue(result.#2.accessRule = facility.getAccessRuleByID(4));
 				assertTrue(result.#2.result = <DENY>);
 				assertTrue(result.#2 in set facility.accessLog);
 			);
@@ -508,7 +514,7 @@ class AccessPoliciesTest
 				assertTrue(result.#2.requestingUser = facility.getUserByID(4));
 				assertTrue(result.#2.cardUsed = facility.getUserByID(4).accessCard);
 				assertTrue(result.#2.sector = facility.getSectorByID("classRoom2"));
-				assertTrue(result.#2.accessRule = rule1);
+				assertTrue(result.#2.accessRule = facility.getAccessRuleByID(0));
 				assertTrue(result.#2.result = <ALLOW>);
 				assertTrue(result.#2 in set facility.accessLog);
 			);
@@ -521,7 +527,7 @@ class AccessPoliciesTest
 				assertTrue(result.#2.requestingUser = facility.getUserByID(4));
 				assertTrue(result.#2.cardUsed = facility.getUserByID(4).accessCard);
 				assertTrue(result.#2.sector = facility.getSectorByID("classRoom1"));
-				assertTrue(result.#2.accessRule = rule1);
+				assertTrue(result.#2.accessRule = facility.getAccessRuleByID(0));
 				assertTrue(result.#2.result = <DENY>);
 				assertTrue(result.#2 in set facility.accessLog);
 			);
@@ -534,11 +540,10 @@ class AccessPoliciesTest
 				assertTrue(result.#2.requestingUser = facility.getUserByID(7));
 				assertTrue(result.#2.cardUsed = facility.getUserByID(7).accessCard);
 				assertTrue(result.#2.sector = facility.getSectorByID("secretariate"));
-				assertTrue(result.#2.accessRule = rule6);
+				assertTrue(result.#2.accessRule = facility.getAccessRuleByID(5));
 				assertTrue(result.#2.result = <ALLOW>);
 				assertTrue(result.#2 in set facility.accessLog);
 			);
-			
 		);
 		
 		-- Entry point to run tests
@@ -549,6 +554,7 @@ class AccessPoliciesTest
 			test.testSuccessfulSectorConfiguration(school);
 			test.testSuccessfulAccessCardAndUserConfiguration(school);
 			test.testSuccessfulAccessRuleConfiguration(school);
+			test.testAccessRequests(school);
 		);
 		
 		-- This test breaks the no two cards with same id safety requirement

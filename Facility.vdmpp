@@ -528,6 +528,4 @@ operations
 	pre requester in set users
 		and sector in set sectors;
 
-traces
--- TODO Define Combinatorial Test Traces here
 end Facility
