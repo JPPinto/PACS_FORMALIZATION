@@ -128,10 +128,15 @@ operations
 	isExpired(currentDate) == return if (endDate <> nil) then DateUtil`isAfter(currentDate, endDate) else false;
 	
 	public ruleRefersToAccessCard: Card ==> bool
-	ruleRefersToAccessCard(cardToCheck) == return (accessCard = cardToCheck or cardGroup.containsCard(accessCard));
+	ruleRefersToAccessCard(cardToCheck) == return if accessCard <> nil then accessCard = cardToCheck else cardGroup.containsCard(cardToCheck);
 	
+	-- Include possible parent sectors here too
 	public ruleRefersToSector: Sector ==> bool
-	ruleRefersToSector(sectorToCheck) == return (sector = sectorToCheck or sectorGroup.containsSector(sectorToCheck));
+	ruleRefersToSector(sectorToCheck) == return if sector <> nil
+		then (
+			sector = sectorToCheck or if sector.parent <> nil then sectorToCheck in set sector.getAncestors() else false
+		)
+		else sectorGroup.containsSector(sectorToCheck) or exists groupSector in set sectorGroup.sectors & (groupSector.parent <> nil and sectorToCheck in set groupSector.getAncestors());
 	
 	public ruleRefersToAccessCardAndSector: Card * Sector ==> bool
 	ruleRefersToAccessCardAndSector(cardToCheck, sectorToCheck) ==
@@ -172,17 +177,19 @@ operations
 		return highestPriorityRule;
 	);
 	
-	-- Retrieves, from a set of Access Rules, the one with the highest priority, but still valid (not expired).
+	-- Retrieves, from a set of Access Rules, the one with the highest priority, but still valid (current date is not earlier than rule creation date and not expired).
 	-- Check class description for details on priorities.
 	public static getHighestPriorityValidRuleFromSet: set of AccessRule * DateUtil`Date ==> AccessRule
 	getHighestPriorityValidRuleFromSet(setOfRules, currentDate) == (
 		dcl highestPriorityRule: [AccessRule] := nil;
 		for all rule in set setOfRules do (
-			if(highestPriorityRule <> nil and not highestPriorityRule.isExpired(currentDate)) then 
-				if rule.getPriority() > highestPriorityRule.getPriority() then highestPriorityRule := rule
-				else
-					if rule.getPriority() = highestPriorityRule.getPriority() then
-						if rule.getPermission() = <DENY> then highestPriorityRule := rule;
+			if(highestPriorityRule = nil) and DateUtil`isAfter(currentDate, rule.startDate) and not rule.isExpired(currentDate) then highestPriorityRule := rule
+			else
+				if(highestPriorityRule <> nil and DateUtil`isAfter(currentDate, rule.startDate) and not rule.isExpired(currentDate)) then 
+					if rule.getPriority() > highestPriorityRule.getPriority() then highestPriorityRule := rule
+					else
+						if rule.getPriority() = highestPriorityRule.getPriority() then
+							if rule.getPermission() = <DENY> then highestPriorityRule := rule;
 		);
 		
 		return highestPriorityRule;
