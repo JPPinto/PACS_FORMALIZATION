@@ -142,41 +142,6 @@ operations
 	ruleRefersToAccessCardAndSector(cardToCheck, sectorToCheck) ==
 		return ruleRefersToAccessCard(cardToCheck) and ruleRefersToSector(sectorToCheck);
 	
-	-- This returns a full list of concerned sectors for this rule. Bearing in mind that someone with access to
-	-- a particular sector must also have access to the parent sectors, this operation returns:
-	-- Either a full list of accessable sectors and their parents, if this is an <ALLOW> rule;
-	-- Or a list of the main sectors refered in the sector group, if this is a <DENY> rule (since denying access
-	-- to a specific sector doesn't necessarily mean we can't access its parent, by this rule):
-	public fullListOfConcernedSectors: () ==> set of Sector
-	fullListOfConcernedSectors() == (
-		dcl mainSectors: set of Sector := (if sectorGroup <> nil then sectorGroup.getSectors() else {sector});
-		dcl accessableSectors: set of Sector := mainSectors;
-		
-		if permission = <ALLOW> then (
-			for all mainSector in set mainSectors do (
-				accessableSectors := accessableSectors union mainSector.getAncestors();
-			);
-		);
-		
-		return accessableSectors;
-	);
-	
-	-- Retrieves, from a set of Access Rules, the one with the highest priority.
-	-- Check class description for details on priorities.
-	public static getHighestPriorityRuleFromSet: set of AccessRule ==> AccessRule
-	getHighestPriorityRuleFromSet(setOfRules) == (
-		dcl highestPriorityRule: [AccessRule] := nil;
-		for all rule in set setOfRules do (
-			if(highestPriorityRule <> nil) then 
-				if rule.getPriority() > highestPriorityRule.getPriority() then highestPriorityRule := rule
-				else
-					if rule.getPriority() = highestPriorityRule.getPriority() then
-						if rule.getPermission() = <DENY> then highestPriorityRule := rule;
-		);
-		
-		return highestPriorityRule;
-	);
-	
 	-- Retrieves, from a set of Access Rules, the one with the highest priority, but still valid (current date is not earlier than rule creation date and not expired).
 	-- Check class description for details on priorities.
 	public static getHighestPriorityValidRuleFromSet: set of AccessRule * DateUtil`Date ==> AccessRule
