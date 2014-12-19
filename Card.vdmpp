@@ -27,20 +27,7 @@ operations
 	public getID: () ==> nat
 	getID() == return id;
 	
-	public setDateOfExpiration: DateUtil`Date ==> ()
-	setDateOfExpiration(newDOE) == dateOfExpiration := newDOE;
-	
-	public getDateOfExpiration: () ==> DateUtil`Date
-	getDateOfExpiration() == return dateOfExpiration;
-	
-	public removeDateOfExpiration: () ==> ()
-	removeDateOfExpiration() == dateOfExpiration := nil;
-	
 	public isExpired: DateUtil`Date ==> bool
 	isExpired(currentDate) == return if dateOfExpiration <> nil then DateUtil`isAfter(currentDate, dateOfExpiration) else false;
 
-functions
--- TODO Define functiones here
-traces
--- TODO Define Combinatorial Test Traces here
 end Card

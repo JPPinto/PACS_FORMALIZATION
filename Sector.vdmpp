@@ -15,7 +15,8 @@ instance variables
 operations
 
 	-- Constructor that specifies a parent sector
-	public Sector(sectorID: SectorID, parentSector: Sector) sector:Sector == (
+	public Sector: SectorID * Sector ==> Sector
+	Sector(sectorID, parentSector) == (
 		id := sectorID;
 		parent := parentSector;
 		return self
@@ -25,7 +26,8 @@ operations
 	post self <> parentSector;
 	
 	-- Constructs a parent-less sector
-	public Sector(sectorID: SectorID) sector:Sector == (
+	public Sector: SectorID ==> Sector
+	Sector(sectorID) == (
 		id := sectorID;
 		return self
 	)
@@ -33,9 +35,6 @@ operations
 	
 	public getID: () ==> SectorID
 	getID() == return id;
-	
-	public getParent: () ==> Sector
-	getParent() == return parent;
 	
 	-- Returns all ancestor sectors (parent of parent of parent...)
 	public getAncestors: () ==> set of Sector

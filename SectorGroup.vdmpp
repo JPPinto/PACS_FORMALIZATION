@@ -24,9 +24,6 @@ operations
 		
 	public containsSector: Sector ==> bool
 	containsSector(groupSector) == return groupSector in set sectors;
-		
-	public getSectors: () ==> set of Sector
-	getSectors() == return sectors;
 	
 	public getGroupName: () ==> SectorGroupName
 	getGroupName() == return groupName;

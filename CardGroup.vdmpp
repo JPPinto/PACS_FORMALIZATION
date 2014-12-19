@@ -24,9 +24,6 @@ operations
 		
 	public containsCard: Card ==> bool
 	containsCard(accessCard) == return accessCard in set accessCards;
-		
-	public getAccessCards: () ==> set of Card
-	getAccessCards() == return accessCards;
 	
 	public getGroupName: () ==> CardGroupName
 	getGroupName() == return groupName;

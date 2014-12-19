@@ -32,9 +32,6 @@ operations
 	public getID: () ==> nat
 	getID() == return id;
 	
-	public getName: () ==> UserName
-	getName() == return name;
-	
 	public getAccessCard: () ==> [Card]
 	getAccessCard() == return accessCard;
 	
