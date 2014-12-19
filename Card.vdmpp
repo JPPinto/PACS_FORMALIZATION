@@ -37,7 +37,7 @@ operations
 	removeDateOfExpiration() == dateOfExpiration := nil;
 	
 	public isExpired: DateUtil`Date ==> bool
-	isExpired(currentDate) == return DateUtil`isAfter(currentDate, dateOfExpiration);
+	isExpired(currentDate) == return if dateOfExpiration <> nil then DateUtil`isAfter(currentDate, dateOfExpiration) else false;
 
 functions
 -- TODO Define functiones here
